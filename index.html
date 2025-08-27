@@ -14,7 +14,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
-<!-- <script  src="auth.js"></script> -->
 <style>
 :root { --card-bg: #fff; --muted: #6b7280; }
 body { background: #f8fafc; }
@@ -61,19 +60,19 @@ table td, table th { vertical-align: middle; }
 <!-- Top tabs -->
 <div class="border-t">
 <div class="max-w-7xl mx-auto flex px-6 overflow-x-auto">
-<div id="tab-dashboard" class="nav-tab active" data-target="dashboard-section">Dashboard</div>
-<div id="tab-compliance" class="nav-tab" data-target="compliance-section">Compliance</div>
-<div id="tab-commission" class="nav-tab" data-target="commission-section">Commission Engine</div>
-<div id="tab-lotteries" class="nav-tab" data-target="lotteries-section">Lotteries</div>
-<div id="tab-payroll" class="nav-tab" data-target="payroll-section">Payroll</div>
-<div id="tab-accounting" class="nav-tab ml-auto" data-target="accounting-section">Accounting</div>
+<div id="tab-dashboard" class="nav-tab active" data-target="dashboard-section" data-role="admin,hr,manager,employee,accountant">Dashboard</div>
+<div id="tab-compliance" class="nav-tab" data-target="compliance-section" data-role="admin,hr,manager">Compliance</div>
+<div id="tab-commission" class="nav-tab" data-target="commission-section" data-role="admin">Commission Engine</div>
+<div id="tab-lotteries" class="nav-tab" data-target="lotteries-section" data-role="admin,hr,manager,employee">Lotteries</div>
+<div id="tab-payroll" class="nav-tab" data-target="payroll-section" data-role="admin,accountant">Payroll</div>
+<div id="tab-accounting" class="nav-tab ml-auto" data-target="accounting-section" data-role="admin,accountant">Accounting</div>
 </div>
 </div>
 </header>
 <!-- Main content -->
 <main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
 <!-- Dashboard / main area (spans 3 columns) -->
-<section id="dashboard-section" class="lg:col-span-3">
+<section id="dashboard-section" class="lg:col-span-3" data-role="admin,hr,manager,employee,accountant">
 <!-- Metrics -->
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
 <div class="card">
@@ -117,7 +116,7 @@ table td, table th { vertical-align: middle; }
 </div>
 </div>
 <!-- Employee table -->
-<div class="card mb-4">
+<div class="card mb-4" data-role="admin,hr">
 <div class="flex items-center justify-between mb-3">
 <div><p class="font-semibold">Employees</p><p class="text-sm text-gray-500">Add / remove employees</p></div>
 </div>
@@ -139,7 +138,7 @@ table td, table th { vertical-align: middle; }
 <input id="emp-performance" placeholder="Performance (optional)" type="number" class="border p-2 rounded" />
 <input id="emp-sales" placeholder="Sales (optional)" type="number" class="border p-2 rounded" />
 <div class="md:col-span-1">
-<button id="btn-add-employee" class="bg-blue-600 text-white px-3 py-1 rounded w-full">Add</button>
+<button id="btn-add-employee" class="bg-blue-600 text-white px-3 py-1 rounded w-full" data-role="admin,hr">Add</button>
 </div>
 </form>
 <div class="overflow-x-auto">
@@ -172,7 +171,7 @@ table td, table th { vertical-align: middle; }
 </div>
 </aside>
 <!-- Compliance Section -->
-<section id="compliance-section" class="hidden lg:col-span-3">
+<section id="compliance-section" class="hidden lg:col-span-3" data-role="admin,hr,manager">
 <div class="card mb-4">
 <div class="flex items-center justify-between">
 <div>
@@ -180,7 +179,7 @@ table td, table th { vertical-align: middle; }
 <p class="text-sm text-gray-500">Track items, deadlines & alerts</p>
 </div>
 <div>
-<button id="btn-add-compliance" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Add Item</button>
+<button id="btn-add-compliance" class="bg-blue-600 text-white px-3 py-1 rounded text-sm" data-role="admin,hr">Add Item</button>
 </div>
 </div>
 </div>
@@ -202,14 +201,14 @@ table td, table th { vertical-align: middle; }
 </div>
 </section>
 <!-- Commission Engine Section -->
-<section id="commission-section" class="hidden lg:col-span-3">
+<section id="commission-section" class="hidden lg:col-span-3" data-role="admin">
 <div class="card mb-4 flex items-center justify-between">
 <div>
 <p class="font-semibold">Commission Engine</p>
 <p class="text-sm text-gray-500">Manage rules and compute payouts</p>
 </div>
 <div>
-<button id="btn-new-rule" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Rule</button>
+<button id="btn-new-rule" class="bg-green-600 text-white px-3 py-1 rounded text-sm" data-role="admin">New Rule</button>
 </div>
 </div>
 <div class="card mb-4">
@@ -227,17 +226,17 @@ table td, table th { vertical-align: middle; }
 </div>
 </section>
 <!-- Lotteries Section -->
-<section id="lotteries-section" class="hidden lg:col-span-3">
+<section id="lotteries-section" class="hidden lg:col-span-3" data-role="admin,hr,manager,employee">
 <div class="card mb-4 flex items-center justify-between">
 <div>
 <p class="font-semibold">Lotteries</p>
 <p class="text-sm text-gray-500">Create lotteries, manage tickets & draw winners</p>
 </div>
 <div>
-<button id="show-create-lottery" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Lottery</button>
+<button id="show-create-lottery" class="bg-green-600 text-white px-3 py-1 rounded text-sm" data-role="admin">New Lottery</button>
 </div>
 </div>
-<div id="create-lottery-form" class="card mb-4" style="display:none">
+<div id="create-lottery-form" class="card mb-4" style="display:none" data-role="admin">
 <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
 <input id="lottery-name" placeholder="Lottery name" class="input" />
 <input id="lottery-start" type="date" class="input" />
@@ -246,13 +245,13 @@ table td, table th { vertical-align: middle; }
 <input id="lottery-ticketPrice" type="number" placeholder="Ticket price (₵)" class="input" />
 </div>
 <div class="flex items-center gap-2">
-<button id="create-lottery" class="bg-blue-600 text-white px-3 py-1 rounded">Create</button>
+<button id="create-lottery" class="bg-blue-600 text-white px-3 py-1 rounded" data-role="admin">Create</button>
 <button id="cancel-create-lottery" class="bg-gray-200 px-3 py-1 rounded">Cancel</button>
 </div>
 </div>
 <div id="lotteries-container" class="space-y-3"></div>
 <!-- Employee Compliance Tasks -->
-<div class="card mb-4">
+<div class="card mb-4" data-role="admin,hr,employee">
 <p class="font-semibold mb-2">My Compliance Tasks</p>
 <p class="text-sm text-gray-500 mb-2">View and submit required compliance documents</p>
 <div class="overflow-y-auto" style="max-height:300px">
@@ -264,7 +263,7 @@ table td, table th { vertical-align: middle; }
 </div>
 </section>
 <!-- Payroll Section -->
-<section id="payroll-section" class="hidden lg:col-span-3">
+<section id="payroll-section" class="hidden lg:col-span-3" data-role="admin,accountant">
 <div class="card mb-4 flex items-center justify-between">
 <div>
 <p class="font-semibold">Payroll</p>
@@ -272,8 +271,8 @@ table td, table th { vertical-align: middle; }
 </div>
 <div class="flex items-center gap-2">
 <input id="payroll-month" class="input" type="month"/>
-<button id="btn-generate-payroll" class="bg-blue-600 text-white btn">Compute</button>
-<button id="btn-save-payroll" class="bg-green-600 text-white btn">Save to Payouts</button>
+<button id="btn-generate-payroll" class="bg-blue-600 text-white btn" data-role="admin">Compute</button>
+<button id="btn-save-payroll" class="bg-green-600 text-white btn" data-role="admin">Save to Payouts</button>
 </div>
 </div>
 <div class="card">
@@ -290,7 +289,7 @@ table td, table th { vertical-align: middle; }
 </div>
 </section>
 <!-- Accounting Section -->
-<section id="accounting-section" class="hidden lg:col-span-3">
+<section id="accounting-section" class="hidden lg:col-span-3" data-role="admin,accountant">
 <div class="card mb-4 flex items-center justify-between">
 <div>
 <p class="font-semibold">Accounting</p>
@@ -298,7 +297,7 @@ table td, table th { vertical-align: middle; }
 </div>
 <div class="flex items-center gap-2">
 <input id="acct-month" class="input" type="month"/>
-<button id="btn-refresh-acct" class="bg-blue-600 text-white btn">Refresh</button>
+<button id="btn-refresh-acct" class="bg-blue-600 text-white btn" data-role="admin,accountant">Refresh</button>
 </div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -318,7 +317,6 @@ table td, table th { vertical-align: middle; }
 </div>
 </section>
 </main>
-<!-- Simple modals are still prompt() based for this single-file demo -->
 <script>
 /* Firebase config */
 const firebaseConfig = {
@@ -433,18 +431,57 @@ function setLoadingState(elementId, isLoading) {
   }
 }
 
-/* RBAC helpers - Now enabled with default admin role */
-
+/* RBAC helpers */
 function applyRBAC() {
-  // Hide elements based on role
+  // Define permission matrix
+  const permissions = {
+    admin: ['dashboard', 'compliance', 'commission', 'lotteries', 'payroll', 'accounting', 'add-employee', 'edit-employee', 'remove-employee', 'add-compliance', 'mark-compliance', 'delete-compliance', 'new-rule', 'toggle-rule', 'delete-rule', 'create-lottery', 'draw-winner', 'end-lottery', 'delete-lottery', 'generate-payroll', 'save-payroll', 'refresh-accounting', 'sell-ticket'],
+    hr: ['dashboard', 'compliance', 'lotteries', 'add-employee', 'edit-employee', 'remove-employee', 'add-compliance', 'mark-compliance', 'delete-compliance', 'sell-ticket'],
+    manager: ['dashboard', 'compliance', 'lotteries', 'edit-own-employee', 'sell-ticket'],
+    employee: ['dashboard', 'lotteries', 'view-own-compliance', 'sell-ticket'],
+    accountant: ['dashboard', 'payroll', 'accounting', 'refresh-accounting']
+  };
+
+  // Hide or disable elements based on role
   document.querySelectorAll('[data-role]').forEach(el => {
-    const requiredRole = el.getAttribute('data-role');
-    if (requiredRole !== CURRENT_ROLE) {
-      el.style.display = 'none';
+    const allowedRoles = el.getAttribute('data-role').split(',');
+    const isAllowed = allowedRoles.includes(CURRENT_ROLE);
+    if (!isAllowed) {
+      if (el.classList.contains('nav-tab')) {
+        el.style.display = 'none';
+      } else if (el.tagName === 'BUTTON') {
+        el.disabled = true;
+        el.classList.add('opacity-50');
+      } else {
+        el.classList.add('hidden-by-role');
+      }
     } else {
-      el.style.display = '';
+      if (el.classList.contains('nav-tab')) {
+        el.style.display = '';
+      } else if (el.tagName === 'BUTTON') {
+        el.disabled = false;
+        el.classList.remove('opacity-50');
+      } else {
+        el.classList.remove('hidden-by-role');
+      }
     }
   });
+
+  // Restrict edit buttons for managers to their own record
+  if (CURRENT_ROLE === 'manager') {
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+      const id = btn.dataset.id;
+      if (id !== CURRENT_EMPLOYEE_ID) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      }
+    });
+    // Disable remove buttons for managers
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+    });
+  }
 }
 
 /* DOM refs */
@@ -458,6 +495,8 @@ const sections = {
   accounting: document.getElementById('accounting-section')
 };
 tabs.forEach(t => t.addEventListener('click', () => {
+  const allowedRoles = t.getAttribute('data-role').split(',');
+  if (!allowedRoles.includes(CURRENT_ROLE)) return;
   document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   const target = t.dataset.target.split('-')[0];
@@ -513,6 +552,7 @@ function attachEmployeeEventListeners() {
     const id = b.dataset.id;
     if (!id) return;
     b.onclick = async () => {
+      if (CURRENT_ROLE === 'manager' && id !== CURRENT_EMPLOYEE_ID) return;
       console.log('Edit clicked for ID:', id);
       try {
         const doc = await db.collection('employees').doc(id).get();
@@ -568,6 +608,7 @@ function attachEmployeeEventListeners() {
     const id = b.dataset.id;
     if (!id) return;
     b.onclick = async () => {
+      if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr') return;
       if (!confirm('Remove employee?')) return;
       try {
         setLoadingState('employees-table-body', true);
@@ -589,6 +630,8 @@ function renderEmployees(employees) {
   const tableRows = employees.map(emp => {
     if (!emp.id) return '';
     const salesSum = safeNum(emp.sales) || 0;
+    const canEdit = CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'hr' || (CURRENT_ROLE === 'manager' && emp.id === CURRENT_EMPLOYEE_ID);
+    const canRemove = CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'hr';
     return `
       <tr>
         <td class="py-2">${emp.name || ''}</td>
@@ -599,8 +642,8 @@ function renderEmployees(employees) {
         <td>${emp.targetSales ? currency(emp.targetSales) : '-'}</td>
         <td>${emp.bonusRate ? emp.bonusRate + '%' : '-'}</td>
         <td class="py-2">
-          <button data-id="${emp.id}" class="btn-edit text-sm text-gray-600">Edit</button>
-          <button data-id="${emp.id}" class="btn-remove text-sm text-red-600 ml-2">Remove</button>
+          <button data-id="${emp.id}" class="btn-edit text-sm text-gray-600" ${!canEdit ? 'disabled' : ''}>Edit</button>
+          <button data-id="${emp.id}" class="btn-remove text-sm text-red-600 ml-2" ${!canRemove ? 'disabled' : ''}>Remove</button>
         </td>
       </tr>`;
   }).join('');
@@ -610,6 +653,7 @@ function renderEmployees(employees) {
 
 /* Add employee */
 document.getElementById('btn-add-employee').addEventListener('click', async (ev) => {
+  if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr') return;
   ev.preventDefault();
   const name = document.getElementById('emp-name').value.trim();
   const email = document.getElementById('emp-email').value.trim();
@@ -686,12 +730,14 @@ async function updateDashboardMetricsFromEmployees(employees) {
 /* Lotteries */
 const lotteriesContainer = document.getElementById('lotteries-container');
 document.getElementById('show-create-lottery').addEventListener('click', () => {
+  if (CURRENT_ROLE !== 'admin') return;
   document.getElementById('create-lottery-form').style.display = 'block';
 });
 document.getElementById('cancel-create-lottery').addEventListener('click', () => {
   document.getElementById('create-lottery-form').style.display = 'none';
 });
 document.getElementById('create-lottery').addEventListener('click', async () => {
+  if (CURRENT_ROLE !== 'admin') return;
   const name = document.getElementById('lottery-name').value.trim();
   const start = document.getElementById('lottery-start').value;
   const end = document.getElementById('lottery-end').value;
@@ -705,7 +751,7 @@ document.getElementById('create-lottery').addEventListener('click', async () => 
       name, start, end, prize, ticketPrice, ticketCount: 0,
       participants: [], winner: null, status: 'active',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: 'admin' // Hardcoded since auth is removed
+      createdBy: CURRENT_USER.email
     });
     document.getElementById('create-lottery-form').style.display = 'none';
     document.getElementById('lottery-name').value = '';
@@ -736,7 +782,7 @@ db.collection('lotteries').orderBy('createdAt', 'desc').onSnapshot(async snap =>
     item.innerHTML = `
       <div class="flex items-start justify-between">
         <div>
-          <div          <div class="font-semibold">${L.name}</div>
+          <div class="font-semibold">${L.name}</div>
           <div class="text-sm text-gray-500">${L.start} to ${L.end}</div>
           <div class="text-sm">Prize: ${currency(L.prize)} | Ticket: ${currency(L.ticketPrice)}</div>
           <div class="text-sm">Tickets sold: ${soldSnap.size} | Status: ${L.status}</div>
@@ -744,10 +790,11 @@ db.collection('lotteries').orderBy('createdAt', 'desc').onSnapshot(async snap =>
         </div>
         <div class="flex flex-col gap-1">
           ${L.status === 'active' ? `
-            <button data-id="${L.id}" class="btn-draw-winner bg-blue-600 text-white px-2 py-1 rounded text-xs">Draw Winner</button>
-            <button data-id="${L.id}" class="btn-end-lottery bg-red-600 text-white px-2 py-1 rounded text-xs">End Lottery</button>
+            <button data-id="${L.id}" class="btn-sell-ticket bg-green-600 text-white px-2 py-1 rounded text-xs" data-role="admin,hr,employee,manager">Sell Ticket</button>
+            <button data-id="${L.id}" class="btn-draw-winner bg-blue-600 text-white px-2 py-1 rounded text-xs" data-role="admin">Draw Winner</button>
+            <button data-id="${L.id}" class="btn-end-lottery bg-red-600 text-white px-2 py-1 rounded text-xs" data-role="admin">End Lottery</button>
           ` : ''}
-          <button data-id="${L.id}" class="btn-delete-lottery bg-gray-600 text-white px-2 py-1 rounded text-xs">Delete</button>
+          <button data-id="${L.id}" class="btn-delete-lottery bg-gray-600 text-white px-2 py-1 rounded text-xs" data-role="admin">Delete</button>
         </div>
       </div>
     `;
@@ -765,8 +812,63 @@ db.collection('lotteries').orderBy('createdAt', 'desc').onSnapshot(async snap =>
 });
 
 function attachLotteryEventListeners() {
+  document.querySelectorAll('.btn-sell-ticket').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      if (!['admin', 'hr', 'employee', 'manager'].includes(CURRENT_ROLE)) return;
+      const lotteryId = e.target.dataset.id;
+      const customerEmail = prompt('Enter customer email (or leave blank for anonymous):')?.trim() || `anonymous_${Date.now()}`;
+      
+      try {
+        setLoadingState('lotteries-container', true);
+        const lotteryDoc = await db.collection('lotteries').doc(lotteryId).get();
+        if (!lotteryDoc.exists || lotteryDoc.data().status !== 'active') {
+          alert('This lottery is not active');
+          return;
+        }
+        const lottery = lotteryDoc.data();
+        const ticketPrice = safeNum(lottery.ticketPrice) || 1;
+
+        const ticketRef = await db.collection('tickets').add({
+          lotteryId,
+          sold: true,
+          ownerEmail: customerEmail,
+          soldBy: CURRENT_USER.email,
+          soldAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection('lotteries').doc(lotteryId).update({
+          ticketCount: firebase.firestore.FieldValue.increment(1),
+          participants: firebase.firestore.FieldValue.arrayUnion(customerEmail)
+        });
+
+        const employeeDoc = await db.collection('employees').doc(CURRENT_EMPLOYEE_ID).get();
+        if (employeeDoc.exists) {
+          const currentSales = safeNum(employeeDoc.data().sales) || 0;
+          await db.collection('employees').doc(CURRENT_EMPLOYEE_ID).update({
+            sales: currentSales + ticketPrice
+          });
+        }
+
+        await db.collection('sales').add({
+          employeeEmail: CURRENT_USER.email,
+          lotteryId,
+          lotteryName: lottery.name,
+          price: ticketPrice,
+          soldAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('Ticket sold successfully');
+      } catch (error) {
+        handleError('sell ticket', error, 'Error selling ticket');
+      } finally {
+        setLoadingState('lotteries-container', false);
+      }
+    });
+  });
+
   document.querySelectorAll('.btn-draw-winner').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin') return;
       const lotteryId = e.target.dataset.id;
       try {
         setLoadingState('lotteries-container', true);
@@ -820,6 +922,7 @@ function attachLotteryEventListeners() {
   
   document.querySelectorAll('.btn-end-lottery').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin') return;
       const lotteryId = e.target.dataset.id;
       if (!confirm('End this lottery? This cannot be undone.')) return;
       
@@ -840,6 +943,7 @@ function attachLotteryEventListeners() {
   
   document.querySelectorAll('.btn-delete-lottery').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin') return;
       const lotteryId = e.target.dataset.id;
       if (!confirm('Delete this lottery? This will also remove all associated tickets.')) return;
       
@@ -912,7 +1016,7 @@ db.collection('payouts').orderBy('createdAt', 'desc').limit(5).onSnapshot(snap =
         <td><span class="status-badge ${statusClass}">${data.status}</span></td>
         <td>
           ${data.status === 'pending' ? 
-            `<button data-id="${doc.id}" class="btn-mark-paid text-blue-600 text-xs">Mark Paid</button>` : 
+            `<button data-id="${doc.id}" class="btn-mark-paid text-blue-600 text-xs" data-role="admin,accountant">Mark Paid</button>` : 
             ''
           }
         </td>
@@ -923,6 +1027,7 @@ db.collection('payouts').orderBy('createdAt', 'desc').limit(5).onSnapshot(snap =
   // Attach event listeners to mark paid buttons
   document.querySelectorAll('.btn-mark-paid').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'accountant') return;
       const payoutId = e.target.dataset.id;
       try {
         setLoadingState('payouts-body', true);
@@ -944,6 +1049,7 @@ db.collection('payouts').orderBy('createdAt', 'desc').limit(5).onSnapshot(snap =
 
 /* Compliance Section */
 document.getElementById('btn-add-compliance').addEventListener('click', async () => {
+  if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr') return;
   const employeeEmail = prompt('Employee email:');
   if (!employeeEmail) return;
   
@@ -972,8 +1078,10 @@ document.getElementById('btn-add-compliance').addEventListener('click', async ()
 
 // Render compliance items
 const complianceItemsBody = document.getElementById('compliance-items-body');
+const employeeComplianceBody = document.getElementById('employee-compliance-body');
 db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
   complianceItemsBody.innerHTML = '';
+  employeeComplianceBody.innerHTML = '';
   const deadlinesContainer = document.getElementById('compliance-deadlines');
   const alertsContainer = document.getElementById('compliance-alerts');
   
@@ -990,22 +1098,42 @@ db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
                        daysLeft < 0 ? 'status-bad' : 
                        daysLeft < 7 ? 'status-mid' : 'status-good';
     
-    // Compliance table row
-    complianceItemsBody.innerHTML += `
-      <tr>
-        <td class="py-1">${data.employeeEmail}</td>
-        <td>${data.requirement}</td>
-        <td>${data.deadline}</td>
-        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-        <td>
-          ${data.status !== 'complete' ? 
-            `<button data-id="${doc.id}" class="btn-mark-complete text-green-600 text-xs">Mark Complete</button>` : 
-            ''
-          }
-          <button data-id="${doc.id}" class="btn-delete-compliance text-red-600 text-xs ml-2">Delete</button>
-        </td>
-      </tr>
-    `;
+    // Main compliance table (for admin, hr, manager)
+    if (CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'hr' || CURRENT_ROLE === 'manager') {
+      complianceItemsBody.innerHTML += `
+        <tr>
+          <td class="py-1">${data.employeeEmail}</td>
+          <td>${data.requirement}</td>
+          <td>${data.deadline}</td>
+          <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+          <td>
+            ${data.status !== 'complete' ? 
+              `<button data-id="${doc.id}" class="btn-mark-complete text-green-600 text-xs" data-role="admin,hr">Mark Complete</button>` : 
+              ''
+            }
+            <button data-id="${doc.id}" class="btn-delete-compliance text-red-600 text-xs ml-2" data-role="admin,hr">Delete</button>
+          </td>
+        </tr>
+      `;
+    }
+    
+    // Employee compliance tasks (for employee, admin, hr)
+    if (CURRENT_ROLE === 'employee' && data.employeeEmail === CURRENT_USER.email || 
+        CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'hr') {
+      employeeComplianceBody.innerHTML += `
+        <tr>
+          <td class="py-1">${data.requirement}</td>
+          <td>${data.deadline}</td>
+          <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+          <td>
+            ${data.status !== 'complete' ? 
+              `<button data-id="${doc.id}" class="btn-mark-complete text-green-600 text-xs" data-role="admin,hr,employee">Mark Complete</button>` : 
+              ''
+            }
+          </td>
+        </tr>
+      `;
+    }
     
     // Upcoming deadlines
     if (daysLeft >= 0 && daysLeft <= 14) {
@@ -1036,9 +1164,11 @@ db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
   // Attach event listeners
   document.querySelectorAll('.btn-mark-complete').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr' && !(CURRENT_ROLE === 'employee' && e.target.closest('tbody').id === 'employee-compliance-body')) return;
       const complianceId = e.target.dataset.id;
       try {
         setLoadingState('compliance-items-body', true);
+        setLoadingState('employee-compliance-body', true);
         await db.collection('compliance').doc(complianceId).update({
           status: 'complete',
           completedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1048,12 +1178,14 @@ db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
         handleError('mark compliance complete', error, 'Error updating compliance status');
       } finally {
         setLoadingState('compliance-items-body', false);
+        setLoadingState('employee-compliance-body', false);
       }
     });
   });
   
   document.querySelectorAll('.btn-delete-compliance').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr') return;
       const complianceId = e.target.dataset.id;
       if (!confirm('Delete this compliance item?')) return;
       
@@ -1074,6 +1206,7 @@ db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
 
 /* Commission Engine */
 document.getElementById('btn-new-rule').addEventListener('click', () => {
+  if (CURRENT_ROLE !== 'admin') return;
   const name = prompt('Rule name:');
   if (!name) return;
   
@@ -1120,10 +1253,10 @@ db.collection('commissionRules').orderBy('createdAt', 'desc').onSnapshot(snap =>
         <div class="text-sm">Then: ${data.action}</div>
         <div class="mt-2 flex gap-2">
           <button data-id="${doc.id}" data-active="${data.active}" 
-            class="btn-toggle-rule text-xs ${data.active ? 'bg-gray-600' : 'bg-green-600'} text-white px-2 py-1 rounded">
+            class="btn-toggle-rule text-xs ${data.active ? 'bg-gray-600' : 'bg-green-600'} text-white px-2 py-1 rounded" data-role="admin">
             ${data.active ? 'Deactivate' : 'Activate'}
           </button>
-          <button data-id="${doc.id}" class="btn-delete-rule text-xs bg-red-600 text-white px-2 py-1 rounded">
+          <button data-id="${doc.id}" class="btn-delete-rule text-xs bg-red-600 text-white px-2 py-1 rounded" data-role="admin">
             Delete
           </button>
         </div>
@@ -1134,6 +1267,7 @@ db.collection('commissionRules').orderBy('createdAt', 'desc').onSnapshot(snap =>
   // Attach event listeners
   document.querySelectorAll('.btn-toggle-rule').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin') return;
       const ruleId = e.target.dataset.id;
       const currentlyActive = e.target.dataset.active === 'true';
       
@@ -1153,6 +1287,7 @@ db.collection('commissionRules').orderBy('createdAt', 'desc').onSnapshot(snap =>
   
   document.querySelectorAll('.btn-delete-rule').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      if (CURRENT_ROLE !== 'admin') return;
       const ruleId = e.target.dataset.id;
       if (!confirm('Delete this commission rule?')) return;
       
@@ -1173,6 +1308,7 @@ db.collection('commissionRules').orderBy('createdAt', 'desc').onSnapshot(snap =>
 
 /* Payroll Section */
 document.getElementById('btn-generate-payroll').addEventListener('click', async () => {
+  if (CURRENT_ROLE !== 'admin') return;
   const month = document.getElementById('payroll-month').value || monthKey();
   if (!month) return alert('Please select a month');
   
@@ -1255,6 +1391,7 @@ document.getElementById('btn-generate-payroll').addEventListener('click', async 
 });
 
 document.getElementById('btn-save-payroll').addEventListener('click', async () => {
+  if (CURRENT_ROLE !== 'admin') return;
   if (!window.lastComputedPayroll) {
     alert('Please generate payroll first');
     return;
@@ -1298,7 +1435,10 @@ document.getElementById('btn-save-payroll').addEventListener('click', async () =
 });
 
 /* Accounting Section */
-document.getElementById('btn-refresh-acct').addEventListener('click', refreshAccounting);
+document.getElementById('btn-refresh-acct').addEventListener('click', async () => {
+  if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'accountant') return;
+  await refreshAccounting();
+});
 async function refreshAccounting() {
   const month = document.getElementById('acct-month').value || monthKey();
   if (!month) return;
@@ -1411,11 +1551,6 @@ refreshAccounting();
 
 // Apply RBAC rules
 applyRBAC();
-
-// Initial user info display
-// document.getElementById('user-email').textContent = CURRENT_USER.email;
-// document.getElementById('user-role').textContent = CURRENT_ROLE.charAt(0).toUpperCase() + CURRENT_ROLE.slice(1);
-
 </script>
 </body>
 </html>

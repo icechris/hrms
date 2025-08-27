@@ -3,83 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HRMS Login</title>
-  <!-- CSP with hashes for inline scripts -->
-  <!-- <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://www.gstatic.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'sha256-VKguof+UOV9+p4qcXjncNRUQhaQ+OljKfcaYMCOoIwQ=' 'sha256-vvt4KWwuNr51XfE5m+hzeNEGhiOfZzG97ccfqGsPwvE='; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com;"> -->
-  <!-- Firebase App (core SDK) -->
+  <title>Lottery HRMS - Auth</title>
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
 
   <style>
     body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f5f6fa; }
-    .login-container { display: flex; height: 100vh; }
-    .login-left { flex: 1; background: #2c3e50; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; }
-    .login-left .logo-img { width: 120px; margin-bottom: 20px; border-radius: 10px; }
-    .login-left h1 { margin: 10px 0; }
-    .login-left .tagline, .login-left .feature { margin: 5px 0; text-align: center; }
-    .login-right { flex: 1; display: flex; justify-content: center; align-items: center; background: #ecf0f1; }
-    .login-form { width: 80%; max-width: 400px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-    .login-form h2 { margin-bottom: 10px; }
-    .login-form p { margin-bottom: 20px; color: #555; }
+    .auth-container { display: flex; height: 100vh; }
+    .auth-left { flex: 1; background: #2c3e50; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px; }
+    .auth-left h1 { margin: 10px 0; }
+    .auth-left .tagline, .auth-left .feature { margin: 5px 0; text-align: center; }
+    .auth-right { flex: 1; display: flex; justify-content: center; align-items: center; background: #ecf0f1; }
+    .auth-form { width: 80%; max-width: 400px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); display: none; }
+    .auth-form.active { display: block; }
+    .auth-form h2 { margin-bottom: 10px; }
+    .auth-form p { margin-bottom: 20px; color: #555; }
     .form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
     .form-group label { margin-bottom: 5px; font-weight: bold; }
-    .form-group input[type="email"], .form-group input[type="password"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-    .form-group.checkbox { flex-direction: row; align-items: center; }
-    .form-group.checkbox input { margin-right: 5px; }
-    .btn.login-btn { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    .form-group input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+    .btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    .btn.signup-btn { background: #28a745; color: white; }
+    .btn.signup-btn:hover { background: #1e7e34; }
+    .btn.login-btn { background: #007bff; color: white; }
     .btn.login-btn:hover { background: #0056b3; }
-    .btn.login-btn.loading { opacity: 0.6; pointer-events: none; }
-    .forgot-password { display: block; margin-top: 10px; text-align: center; color: #007bff; text-decoration: none; }
-    .forgot-password:hover { text-decoration: underline; }
+    .btn.loading { opacity: 0.6; pointer-events: none; }
     .error-message { color: #d32f2f; font-size: 0.9em; margin-top: 10px; text-align: center; display: none; }
+    .toggle-link { text-align: center; margin-top: 15px; cursor: pointer; color: #007bff; }
+    .toggle-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="login-container">
-    <!-- Left Branding Section -->
-    <div class="login-left">
-      <!-- <img src="images/logo.jpg" alt="HRMS Logo" class="logo-img"> -->
+  <div class="auth-container">
+    <!-- Left Branding -->
+    <div class="auth-left">
       <h1>Lottery HRMS</h1>
       <p class="tagline">Smart Human Resource Management</p>
-      <p class="feature">Manage employees, track attendance, approve leave, and automate payroll — all in one smart dashboard.</p>
+      <p class="feature">Manage your HR tasks easily and securely.</p>
     </div>
 
-    <!-- Right Login Form -->
-    <div class="login-right">
-      <form id="loginForm" class="login-form">
+    <!-- Right Forms -->
+    <div class="auth-right">
+      <!-- Signup Form -->
+      <form id="signupForm" class="auth-form">
+        <h2>Create Account</h2>
+        <p>Fill in your details to sign up</p>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" placeholder="user@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" placeholder="At least 6 characters" required />
+        </div>
+        <button type="submit" class="btn signup-btn">Sign Up</button>
+        <p id="signup-error-message" class="error-message"></p>
+        <div class="toggle-link" onclick="showForm('loginForm')">Already have an account? Login</div>
+      </form>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="auth-form">
         <h2>Login</h2>
-        <p>Enter your email & password</p>
+        <p>Access your account</p>
         <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="user@example.com" required />
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="user@example.com" required />
         </div>
         <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" placeholder="At least 8 characters" required />
-        </div>
-        <div class="form-group checkbox">
-          <input type="checkbox" id="keepSignedIn" />
-          <label for="keepSignedIn">Keep me signed in</label>
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" placeholder="********" required />
         </div>
         <button type="submit" class="btn login-btn">Login</button>
-        <a href="#" class="forgot-password">Forgot password?</a>
-        <p id="error-message" class="error-message"></p>
+        <p id="login-error-message" class="error-message"></p>
+        <div class="toggle-link" onclick="showForm('signupForm')">Don’t have an account? Sign Up</div>
       </form>
     </div>
   </div>
 
   <script>
-    /* Debug Firebase loading */
-    console.log('Checking Firebase availability...');
-    window.addEventListener('load', () => {
-      console.log('Window loaded. Firebase:', typeof firebase, firebase);
-      console.log('Firebase auth:', firebase?.auth);
-    });
-  </script>
-
-  <script>
-    /* Firebase config */
     const firebaseConfig = {
       apiKey: "AIzaSyD3FdDFTm2-ic5jRgTgKm8BwKTwvRb0fuw",
       authDomain: "lotteryhrms.firebaseapp.com",
@@ -89,144 +90,74 @@
       appId: "1:46749836470:web:42d899c220ccfa61713217"
     };
 
-    /* Wait for Firebase to load */
-    function initializeFirebase() {
-      if (typeof firebase === 'undefined') {
-        console.error('Firebase is not defined. Retrying in 500ms...');
-        setTimeout(initializeFirebase, 500);
-        return;
-      }
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const signupForm = document.getElementById('signupForm');
+    const loginForm = document.getElementById('loginForm');
+    const signupBtn = signupForm.querySelector('.signup-btn');
+    const loginBtn = loginForm.querySelector('.login-btn');
+    const signupError = document.getElementById('signup-error-message');
+    const loginError = document.getElementById('login-error-message');
+
+    // Show one form at a time
+    function showForm(formId) {
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(formId).classList.add('active');
+    }
+    // Default to login form
+    showForm('loginForm');
+
+    // Signup Handler
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
 
       try {
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        setLoading(signupBtn, true); signupError.style.display = "none";
 
-        /* Handle login form submission */
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn = loginForm.querySelector('.login-btn');
-        const errorMessage = document.getElementById('error-message');
-
-        loginForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const email = document.getElementById('email').value.trim();
-          const password = document.getElementById('password').value;
-          const keepSignedIn = document.getElementById('keepSignedIn').checked;
-
-          if (!email || !password) {
-            showError('Please enter both email and password.');
-            return;
-          }
-
-          try {
-            setLoadingState(loginBtn, true);
-            errorMessage.style.display = 'none';
-
-            // Set auth persistence
-            await auth.setPersistence(
-              keepSignedIn
-                ? firebase.auth.Auth.Persistence.LOCAL
-                : firebase.auth.Auth.Persistence.SESSION
-            );
-
-            // Sign in
-            const userCredential = await auth.signInWithEmailAndPassword(email, password);
-
-            // Verify user in Firestore
-            const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
-            if (!userDoc.exists) {
-              await auth.signOut();
-              showError('No user data found. Please contact admin.');
-              return;
-            }
-
-            // Redirect to dashboard
-            window.location.href = 'index.html';
-          } catch (error) {
-            console.error('Login error:', error);
-            let message = 'An error occurred during login. Please try again.';
-            switch (error.code) {
-              case 'auth/user-not-found':
-                message = 'No user found with this email.';
-                break;
-              case 'auth/wrong-password':
-                message = 'Incorrect password.';
-                break;
-              case 'auth/invalid-email':
-                message = 'Invalid email format.';
-                break;
-              case 'auth/too-many-requests':
-                message = 'Too many attempts. Please try again later.';
-                break;
-            }
-            showError(message);
-          } finally {
-            setLoadingState(loginBtn, false);
-          }
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection("users").doc(userCredential.user.uid).set({
+          email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          role: "employee"
         });
 
-        /* Handle forgot password */
-        document.querySelector('.forgot-password').addEventListener('click', async (e) => {
-          e.preventDefault();
-          const email = document.getElementById('email').value.trim();
-          if (!email) {
-            showError('Please enter your email to reset password.');
-            return;
-          }
-
-          try {
-            setLoadingState(loginBtn, true);
-            errorMessage.style.display = 'none';
-            await auth.sendPasswordResetEmail(email);
-            alert('Password reset email sent. Check your inbox.');
-          } catch (error) {
-            console.error('Password reset error:', error);
-            let message = 'Error sending password reset email.';
-            switch (error.code) {
-              case 'auth/invalid-email':
-                message = 'Invalid email format.';
-                break;
-              case 'auth/user-not-found':
-                message = 'No user found with this email.';
-                break;
-            }
-            showError(message);
-          } finally {
-            setLoadingState(loginBtn, false);
-          }
-        });
-
-        /* Helper functions */
-        function setLoadingState(element, isLoading) {
-          element.classList.toggle('loading', isLoading);
-        }
-
-        function showError(message) {
-          errorMessage.textContent = message;
-          errorMessage.style.display = 'block';
-        }
-
-        /* Check if already signed in */
-        auth.onAuthStateChanged(async (user) => {
-          if (user) {
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-              window.location.href = 'index.html';
-            } else {
-              await auth.signOut();
-              showError('No user data found. Please contact admin.');
-            }
-          }
-        });
-
+        alert("Account created successfully. Please login.");
+        showForm('loginForm'); // switch to login
       } catch (error) {
-        console.error('Firebase initialization failed:', error);
-        showError('Failed to initialize Firebase. Please check your network or try again later.');
+        signupError.textContent = error.message;
+        signupError.style.display = "block";
+      } finally {
+        setLoading(signupBtn, false);
       }
-    }
+    });
 
-    /* Call initialization */
-    initializeFirebase();
+    // Login Handler
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        setLoading(loginBtn, true); loginError.style.display = "none";
+
+        await auth.signInWithEmailAndPassword(email, password);
+
+        window.location.href = "index.html"; // redirect
+      } catch (error) {
+        loginError.textContent = "Invalid credentials. Please try again.";
+        loginError.style.display = "block";
+      } finally {
+        setLoading(loginBtn, false);
+      }
+    });
+
+    function setLoading(btn, isLoading) {
+      btn.classList.toggle("loading", isLoading);
+    }
   </script>
 </body>
 </html>
