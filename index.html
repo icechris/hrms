@@ -1,0 +1,1421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LotteryCorp HRMS — Full Dashboard (Firestore)</title>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Firebase compat libs (auth + firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+<!-- <script  src="auth.js"></script> -->
+<style>
+:root { --card-bg: #fff; --muted: #6b7280; }
+body { background: #f8fafc; }
+.avatar { width: 36px; height: 36px; border-radius: 999px; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #374151; }
+.status-badge { padding: .25rem .5rem; border-radius: 9999px; font-size: .75rem; font-weight: 600; }
+.status-good { background: #dcfce7; color: #166534; }
+.status-mid { background: #fef3c7; color: #92400e; }
+.status-bad { background: #fee2e2; color: #991b1b; }
+.status-complete { background: #d1fae5; color: #065f46; }
+.card { background: var(--card-bg); border-radius: .75rem; padding: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.05); }
+.nav-tab { cursor: pointer; padding: 0.75rem 1rem; font-weight: 600; color: var(--muted); }
+.nav-tab.active { color: #1e40af; border-bottom: 3px solid #1e40af; }
+.chart-container { height: 260px; }
+table td, table th { vertical-align: middle; }
+.input { border: 1px solid #e5e7eb; border-radius: .5rem; padding: .5rem .75rem; }
+.btn { border-radius: .5rem; padding: .5rem .75rem; }
+.hidden-by-role { display: none !important; }
+.loading { opacity: 0.6; pointer-events: none; }
+.hidden { display: none; }
+.opacity-50 { opacity: 0.5; }
+</style>
+</head>
+<body class="min-h-screen">
+<!-- Header -->
+<header class="bg-white shadow">
+<div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+  <div class="flex items-center gap-3">
+    <div class="bg-blue-700 text-white p-2 rounded-lg"><i class="fas fa-ticket-alt"></i></div>
+    <h1 class="text-xl font-bold text-gray-800">LotteryCorp HRMS</h1>
+  </div>
+  <div class="flex items-center gap-4">
+    <div id="user-info" class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <div id="user-initials" class="avatar"></div>
+        <div>
+          <div id="user-email" class="text-sm font-medium text-gray-700">Loading...</div>
+          <div id="user-role" class="text-xs text-gray-500"></div>
+        </div>
+      </div>
+    </div>
+    <button id="btn-logout" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 hidden">Logout</button>
+  </div>
+</div>
+<!-- Top tabs -->
+<div class="border-t">
+<div class="max-w-7xl mx-auto flex px-6 overflow-x-auto">
+<div id="tab-dashboard" class="nav-tab active" data-target="dashboard-section">Dashboard</div>
+<div id="tab-compliance" class="nav-tab" data-target="compliance-section">Compliance</div>
+<div id="tab-commission" class="nav-tab" data-target="commission-section">Commission Engine</div>
+<div id="tab-lotteries" class="nav-tab" data-target="lotteries-section">Lotteries</div>
+<div id="tab-payroll" class="nav-tab" data-target="payroll-section">Payroll</div>
+<div id="tab-accounting" class="nav-tab ml-auto" data-target="accounting-section">Accounting</div>
+</div>
+</div>
+</header>
+<!-- Main content -->
+<main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+<!-- Dashboard / main area (spans 3 columns) -->
+<section id="dashboard-section" class="lg:col-span-3">
+<!-- Metrics -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+<div class="card">
+<p class="text-sm text-gray-500">Total Employees</p>
+<p id="total-employees" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Active Participants</p>
+<p id="total-participants" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Total Winners</p>
+<p id="total-winners" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Total Commissions (₵)</p>
+<p id="total-commissions" class="text-2xl font-bold">₵0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Revenue (₵ — this month)</p>
+<p id="metric-revenue" class="text-2xl font-bold">₵0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Profit (₵ — this month)</p>
+<p id="metric-profit" class="text-2xl font-bold">₵0</p>
+</div>
+</div>
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+<div class="card lg:col-span-2">
+<p class="font-semibold mb-2">Sales / Commission by Employee</p>
+<div class="chart-container"><canvas id="salesCommissionChart"></canvas></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Role Distribution</p>
+<div class="chart-container"><canvas id="roleChart"></canvas></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Employee Performance</p>
+<div class="chart-container"><canvas id="performanceChart"></canvas></div>
+</div>
+</div>
+<!-- Employee table -->
+<div class="card mb-4">
+<div class="flex items-center justify-between mb-3">
+<div><p class="font-semibold">Employees</p><p class="text-sm text-gray-500">Add / remove employees</p></div>
+</div>
+<form id="add-employee-form" class="grid grid-cols-1 md:grid-cols-6 gap-2 mb-4">
+<input id="emp-name" placeholder="Full name" class="border p-2 rounded" required />
+<input id="emp-email" placeholder="Email" type="email" class="border p-2 rounded" required />
+<select id="emp-role" class="border p-2 rounded">
+<option value="employee">Employee</option>
+<option value="manager">Manager</option>
+<option value="hr">HR</option>
+<option value="accountant">Accountant</option>
+<option value="admin">Admin</option>
+</select>
+<input id="emp-salary" placeholder="Salary (₵)" type="number" class="border p-2 rounded" />
+<input id="emp-commission" placeholder="Commission % (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-branch" placeholder="Branch" class="border p-2 rounded" />
+<input id="emp-target" placeholder="Monthly target (₵, optional)" type="number" class="border p-2 rounded md:col-span-2" />
+<input id="emp-bonusRate" placeholder="Bonus % over target (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-performance" placeholder="Performance (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-sales" placeholder="Sales (optional)" type="number" class="border p-2 rounded" />
+<div class="md:col-span-1">
+<button id="btn-add-employee" class="bg-blue-600 text-white px-3 py-1 rounded w-full">Add</button>
+</div>
+</form>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Name</th><th>Email</th><th>Role</th><th>Sales (this mo.)</th><th>Comm %</th><th>Target</th><th>Bonus %</th><th>Actions</th></tr></thead>
+<tbody id="employees-table-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Right sidebar (commissions + payouts) -->
+<aside class="space-y-6">
+<div class="card">
+<p class="font-semibold mb-2">Commissions (recent)</p>
+<div class="overflow-y-auto" style="max-height:260px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Employee</th><th>Amount</th><th>Source</th></tr></thead>
+<tbody id="commissions-body"></tbody>
+</table>
+</div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Payouts (recent)</p>
+<div class="overflow-y-auto" style="max-height:260px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Employee</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="payouts-body"></tbody>
+</table>
+</div>
+</div>
+</aside>
+<!-- Compliance Section -->
+<section id="compliance-section" class="hidden lg:col-span-3">
+<div class="card mb-4">
+<div class="flex items-center justify-between">
+<div>
+<p class="font-semibold">Compliance Management</p>
+<p class="text-sm text-gray-500">Track items, deadlines & alerts</p>
+</div>
+<div>
+<button id="btn-add-compliance" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Add Item</button>
+</div>
+</div>
+</div>
+<div class="card mb-4">
+<table class="w-full text-left">
+<thead><tr><th>Employee</th><th>Requirement</th><th>Deadline</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="compliance-items-body"></tbody>
+</table>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<div class="card">
+<p class="font-semibold">Upcoming Deadlines</p>
+<div id="compliance-deadlines" class="mt-3 space-y-2"></div>
+</div>
+<div class="card">
+<p class="font-semibold">Compliance Alerts</p>
+<div id="compliance-alerts" class="mt-3 space-y-2"></div>
+</div>
+</div>
+</section>
+<!-- Commission Engine Section -->
+<section id="commission-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Commission Engine</p>
+<p class="text-sm text-gray-500">Manage rules and compute payouts</p>
+</div>
+<div>
+<button id="btn-new-rule" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Rule</button>
+</div>
+</div>
+<div class="card mb-4">
+<p class="font-semibold mb-2">Rules</p>
+<div id="rules-list" class="space-y-2"></div>
+</div>
+<div class="card mb-4">
+<p class="font-semibold mb-2">Payouts</p>
+<div class="overflow-y-auto" style="max-height:300px">
+<table class="w-full text-left">
+<thead><tr><th>Employee</th><th>Commission</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="engine-payouts-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Lotteries Section -->
+<section id="lotteries-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Lotteries</p>
+<p class="text-sm text-gray-500">Create lotteries, manage tickets & draw winners</p>
+</div>
+<div>
+<button id="show-create-lottery" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Lottery</button>
+</div>
+</div>
+<div id="create-lottery-form" class="card mb-4" style="display:none">
+<div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
+<input id="lottery-name" placeholder="Lottery name" class="input" />
+<input id="lottery-start" type="date" class="input" />
+<input id="lottery-end" type="date" class="input" />
+<input id="lottery-prize" type="number" placeholder="Prize (₵)" class="input" />
+<input id="lottery-ticketPrice" type="number" placeholder="Ticket price (₵)" class="input" />
+</div>
+<div class="flex items-center gap-2">
+<button id="create-lottery" class="bg-blue-600 text-white px-3 py-1 rounded">Create</button>
+<button id="cancel-create-lottery" class="bg-gray-200 px-3 py-1 rounded">Cancel</button>
+</div>
+</div>
+<div id="lotteries-container" class="space-y-3"></div>
+<!-- Employee Compliance Tasks -->
+<div class="card mb-4">
+<p class="font-semibold mb-2">My Compliance Tasks</p>
+<p class="text-sm text-gray-500 mb-2">View and submit required compliance documents</p>
+<div class="overflow-y-auto" style="max-height:300px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Requirement</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="employee-compliance-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Payroll Section -->
+<section id="payroll-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Payroll</p>
+<p class="text-sm text-gray-500">Auto-generate monthly payroll from sales & bonuses</p>
+</div>
+<div class="flex items-center gap-2">
+<input id="payroll-month" class="input" type="month"/>
+<button id="btn-generate-payroll" class="bg-blue-600 text-white btn">Compute</button>
+<button id="btn-save-payroll" class="bg-green-600 text-white btn">Save to Payouts</button>
+</div>
+</div>
+<div class="card">
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr>
+<th>Employee</th><th>Base</th><th>Sales (₵)</th><th>Commission (₵)</th><th>Bonus (₵)</th><th>Total (₵)</th>
+</tr>
+</thead>
+<tbody id="payroll-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Accounting Section -->
+<section id="accounting-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Accounting</p>
+<p class="text-sm text-gray-500">Revenue, prize payouts, commissions & profit</p>
+</div>
+<div class="flex items-center gap-2">
+<input id="acct-month" class="input" type="month"/>
+<button id="btn-refresh-acct" class="bg-blue-600 text-white btn">Refresh</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+<div class="card"><p class="text-sm text-gray-500">Revenue (₵)</p><p id="acct-revenue" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Prize Payouts (₵)</p><p id="acct-prizes" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Commissions (₵)</p><p id="acct-comm" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Profit (₵)</p><p id="acct-profit" class="text-2xl font-bold">₵0</p></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Breakdown (this month)</p>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead><tr><th>Type</th><th>Reference</th><th>Amount (₵)</th><th>Date</th></tr></thead>
+<tbody id="acct-breakdown"></tbody>
+</table>
+</div>
+</div>
+</section>
+</main>
+<!-- Simple modals are still prompt() based for this single-file demo -->
+<script>
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyD3FdDFTm2-ic5jRgTgKm8BwKTwvRb0fuw",
+  authDomain: "lotteryhrms.firebaseapp.com",
+  projectId: "lotteryhrms",
+  storageBucket: "lotteryhrms.firebasestorage.app",
+  messagingSenderId: "46749836470",
+  appId: "1:46749836470:web:42d899c220ccfa61713217"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* Firebase Auth initialization */
+const auth = firebase.auth();
+
+/* User state */
+let CURRENT_USER = null;
+let CURRENT_ROLE = null;
+let CURRENT_EMPLOYEE_ID = null;
+
+/* Auth state listener */
+auth.onAuthStateChanged(async (user) => {
+  try {
+    if (user) {
+      // User is signed in
+      CURRENT_USER = { email: user.email, uid: user.uid };
+      
+      // Fetch user data from Firestore users collection
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        CURRENT_ROLE = userData.role || 'employee';
+        CURRENT_EMPLOYEE_ID = user.uid;
+        
+        // Update UI with user info
+        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('user-role').textContent = CURRENT_ROLE.charAt(0).toUpperCase() + CURRENT_ROLE.slice(1);
+        document.getElementById('user-initials').textContent = userData.name ? userData.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase();
+        document.getElementById('btn-logout').classList.remove('hidden');
+      } else {
+        // No user data in Firestore, redirect to login
+        alert('No user data found. Please contact admin.');
+        await auth.signOut();
+        window.location.href = 'login.html';
+        return;
+      }
+      
+      // Apply RBAC and refresh data
+      applyRBAC();
+      refreshAccounting();
+    } else {
+      // No user is signed in, redirect to login
+      CURRENT_USER = null;
+      CURRENT_ROLE = null;
+      CURRENT_EMPLOYEE_ID = null;
+      window.location.href = 'login.html';
+    }
+  } catch (error) {
+    handleError('auth state change', error, 'Error loading user data');
+    window.location.href = 'login.html';
+  }
+});
+
+/* Logout functionality */
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to log out?')) return;
+  
+  try {
+    await auth.signOut();
+    alert('Logged out successfully');
+    window.location.href = 'login.html';
+  } catch (error) {
+    handleError('logout', error, 'Error during logout');
+  }
+});
+
+/* Helpers */
+const currency = v => `₵${Number(v||0).toLocaleString()}`;
+const safeNum = v => isNaN(Number(v)) ? 0 : Number(v);
+const monthKey = (d) => {
+  const dt = d ? new Date(d) : new Date();
+  const y = dt.getFullYear(); const m = (dt.getMonth()+1).toString().padStart(2,'0');
+  return `${y}-${m}`;
+};
+const monthRange = (ym) => {
+  const [y,m] = ym.split('-').map(Number);
+  const start = new Date(y, m-1, 1, 0,0,0,0);
+  const end = new Date(y, m, 0, 23,59,59,999);
+  return {start, end};
+};
+
+// Improved error handling function
+function handleError(context, error, userMessage = null) {
+  console.error(`Error in ${context}:`, error);
+  if (userMessage) {
+    alert(userMessage);
+  } else {
+    alert(`An error occurred in ${context}. Please try again.`);
+  }
+}
+
+// Loading state management
+function setLoadingState(elementId, isLoading) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    if (isLoading) {
+      element.classList.add('loading');
+    } else {
+      element.classList.remove('loading');
+    }
+  }
+}
+
+/* RBAC helpers - Now enabled with default admin role */
+
+function applyRBAC() {
+  // Hide elements based on role
+  document.querySelectorAll('[data-role]').forEach(el => {
+    const requiredRole = el.getAttribute('data-role');
+    if (requiredRole !== CURRENT_ROLE) {
+      el.style.display = 'none';
+    } else {
+      el.style.display = '';
+    }
+  });
+}
+
+/* DOM refs */
+const tabs = document.querySelectorAll('.nav-tab');
+const sections = {
+  dashboard: document.getElementById('dashboard-section'),
+  compliance: document.getElementById('compliance-section'),
+  commission: document.getElementById('commission-section'),
+  lotteries: document.getElementById('lotteries-section'),
+  payroll: document.getElementById('payroll-section'),
+  accounting: document.getElementById('accounting-section')
+};
+tabs.forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  const target = t.dataset.target.split('-')[0];
+  Object.values(sections).forEach(s => s.classList.add('hidden'));
+  if (target === 'dashboard') sections.dashboard.classList.remove('hidden');
+  if (target === 'compliance') sections.compliance.classList.remove('hidden');
+  if (target === 'commission') sections.commission.classList.remove('hidden');
+  if (target === 'lotteries') sections.lotteries.classList.remove('hidden');
+  if (target === 'payroll') sections.payroll.classList.remove('hidden');
+  if (target === 'accounting') sections.accounting.classList.remove('hidden');
+}));
+
+/* Charts */
+const salesCommissionCtx = document.getElementById('salesCommissionChart').getContext('2d');
+const roleCtx = document.getElementById('roleChart').getContext('2d');
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+let salesCommissionChart = new Chart(salesCommissionCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Sales', data: [], backgroundColor:'#3b82f6' }, { label: 'Commission', data: [], backgroundColor:'#10b981' }] },
+  options: { responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}} }
+});
+let roleChart = new Chart(roleCtx, {
+  type: 'doughnut',
+  data: { labels: ['admin','hr','manager','employee','accountant'], datasets: [{ data:[0,0,0,0,0], backgroundColor:['#111827','#6b7280','#2563eb','#10b981','#f59e0b'] }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+});
+let performanceChart = new Chart(performanceCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Performance', data: [], backgroundColor: '#ef4444' }] },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+});
+
+/* Employees (real-time) */
+const employeesTableBody = document.getElementById('employees-table-body');
+let EMP_CACHE = {};
+db.collection('employees').orderBy('name', 'asc').onSnapshot(snapshot => {
+  const employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  EMP_CACHE = {};
+  employees.forEach(e => EMP_CACHE[e.id] = e);
+  console.log('Fetched employees:', employees);
+  renderEmployees(employees);
+  updateDashboardMetricsFromEmployees(employees);
+}, error => {
+  handleError('employees listener', error, 'Failed to load employees. Please refresh the page.');
+});
+
+function attachEmployeeEventListeners() {
+  console.log('Attaching event listeners...');
+  const editButtons = document.querySelectorAll('.btn-edit');
+  const removeButtons = document.querySelectorAll('.btn-remove');
+  
+  editButtons.forEach(b => {
+    const id = b.dataset.id;
+    if (!id) return;
+    b.onclick = async () => {
+      console.log('Edit clicked for ID:', id);
+      try {
+        const doc = await db.collection('employees').doc(id).get();
+        if (!doc.exists) {
+          alert('Employee not found');
+          return;
+        }
+        const d = doc.data();
+        const name = prompt('Name', d.name || '');
+        if (name === null) return;
+        const email = prompt('Email', d.email || '');
+        if (email === null) return;
+        const role = prompt('Role (admin/hr/manager/employee/accountant)', d.role || '');
+        if (role === null) return;
+        const branch = prompt('Branch', d.branch || '');
+        if (branch === null) return;
+        const salary = prompt('Salary', d.salary || 0);
+        if (salary === null) return;
+        const commission = prompt('Commission %', d.commission || 0);
+        if (commission === null) return;
+        const targetSales = prompt('Monthly target (₵)', d.targetSales || '');
+        if (targetSales === null) return;
+        const bonusRate = prompt('Bonus % over target', d.bonusRate || '');
+        if (bonusRate === null) return;
+        const performance = prompt('Performance', d.performance || 0);
+        if (performance === null) return;
+        const sales = prompt('Sales', d.sales || 0);
+        if (sales === null) return;
+        
+        setLoadingState('employees-table-body', true);
+        await db.collection('employees').doc(id).update({
+          name,
+          email,
+          role,
+          branch: branch || '',
+          salary: safeNum(salary) || 0,
+          commission: safeNum(commission) || 0,
+          targetSales: safeNum(targetSales) || 0,
+          bonusRate: safeNum(bonusRate) || 0,
+          performance: safeNum(performance) || 0,
+          sales: safeNum(sales) || 0
+        });
+        alert('Employee updated successfully');
+      } catch (e) {
+        handleError('update employee', e, 'Error updating employee');
+      } finally {
+        setLoadingState('employees-table-body', false);
+      }
+    };
+  });
+
+  removeButtons.forEach(b => {
+    const id = b.dataset.id;
+    if (!id) return;
+    b.onclick = async () => {
+      if (!confirm('Remove employee?')) return;
+      try {
+        setLoadingState('employees-table-body', true);
+        await db.collection('employees').doc(id).delete();
+        alert('Employee deleted successfully');
+      } catch (e) {
+        handleError('delete employee', e, 'Error deleting employee');
+      } finally {
+        setLoadingState('employees-table-body', false);
+      }
+    };
+  });
+}
+
+function renderEmployees(employees) {
+  console.log('Rendering employees:', employees.length);
+  employeesTableBody.innerHTML = '';
+  const currentMonth = monthKey();
+  const tableRows = employees.map(emp => {
+    if (!emp.id) return '';
+    const salesSum = safeNum(emp.sales) || 0;
+    return `
+      <tr>
+        <td class="py-2">${emp.name || ''}</td>
+        <td>${emp.email || ''}</td>
+        <td>${emp.role || ''}</td>
+        <td>${safeNum(salesSum)}</td>
+        <td>${emp.commission ? emp.commission + '%' : '-'}</td>
+        <td>${emp.targetSales ? currency(emp.targetSales) : '-'}</td>
+        <td>${emp.bonusRate ? emp.bonusRate + '%' : '-'}</td>
+        <td class="py-2">
+          <button data-id="${emp.id}" class="btn-edit text-sm text-gray-600">Edit</button>
+          <button data-id="${emp.id}" class="btn-remove text-sm text-red-600 ml-2">Remove</button>
+        </td>
+      </tr>`;
+  }).join('');
+  employeesTableBody.innerHTML = tableRows;
+  attachEmployeeEventListeners();
+}
+
+/* Add employee */
+document.getElementById('btn-add-employee').addEventListener('click', async (ev) => {
+  ev.preventDefault();
+  const name = document.getElementById('emp-name').value.trim();
+  const email = document.getElementById('emp-email').value.trim();
+  const role = document.getElementById('emp-role').value;
+  const salary = safeNum(document.getElementById('emp-salary').value);
+  const commission = safeNum(document.getElementById('emp-commission').value);
+  const branch = document.getElementById('emp-branch').value.trim();
+  const targetSales = safeNum(document.getElementById('emp-target').value);
+  const bonusRate = safeNum(document.getElementById('emp-bonusRate').value);
+  const performance = safeNum(document.getElementById('emp-performance').value);
+  const sales = safeNum(document.getElementById('emp-sales').value);
+  
+  if (!name || !email) return alert('Name and email required');
+  
+  try {
+    setLoadingState('btn-add-employee', true);
+    await db.collection('employees').add({
+      name, email, role, salary, commission, branch,
+      targetSales: targetSales || 0,
+      bonusRate: bonusRate || 0,
+      performance: performance || 0,
+      sales: sales || 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('add-employee-form').reset();
+    alert('Employee added successfully');
+  } catch (e) {
+    handleError('add employee', e, 'Error adding employee');
+  } finally {
+    setLoadingState('btn-add-employee', false);
+  }
+});
+
+/* Dashboard helpers */
+const elTotalEmployees = document.getElementById('total-employees');
+const elTotalParticipants = document.getElementById('total-participants');
+const elTotalWinners = document.getElementById('total-winners');
+const elTotalCommissions = document.getElementById('total-commissions');
+const elMetricRevenue = document.getElementById('metric-revenue');
+const elMetricProfit = document.getElementById('metric-profit');
+async function updateDashboardMetricsFromEmployees(employees) {
+  elTotalEmployees.textContent = employees.length;
+  const labels = employees.map(e => e.name || e.email || e.id).slice(0, 12);
+  const salesArr = employees.slice(0, 12).map(e => safeNum(e.sales) || 0);
+  const commissions = salesArr.map((s, i) => Math.round(s * safeNum(employees[i].commission || 0) / 100));
+  const performances = employees.slice(0, 12).map(e => safeNum(e.performance) || 0);
+  salesCommissionChart.data.labels = labels;
+  salesCommissionChart.data.datasets[0].data = salesArr;
+  salesCommissionChart.data.datasets[1].data = commissions;
+  salesCommissionChart.update();
+  const roles = { admin: 0, hr: 0, manager: 0, employee: 0, accountant: 0 };
+  employees.forEach(e => roles[e.role] = (roles[e.role] || 0) + 1);
+  roleChart.data.datasets[0].data = [roles.admin || 0, roles.hr || 0, roles.manager || 0, roles.employee || 0, roles.accountant || 0];
+  roleChart.update();
+  performanceChart.data.labels = labels;
+  performanceChart.data.datasets[0].data = performances;
+  performanceChart.update();
+  
+  try {
+    const { start, end } = monthRange(monthKey());
+    const salesSnap = await db.collection('sales').where('soldAt', '>=', start).where('soldAt', '<=', end).get();
+    const revenue = salesSnap.docs.reduce((a, d) => a + safeNum(d.data().price), 0);
+    const commSnap = await db.collection('commissions').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+    const comms = commSnap.docs.reduce((a, d) => a + safeNum(d.data().amount), 0);
+    const prizeSnap = await db.collection('payouts').where('type', '==', 'prize').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+    const prizes = prizeSnap.docs.reduce((a, d) => a + safeNum(d.data().total), 0);
+    elMetricRevenue.textContent = currency(revenue);
+    elMetricProfit.textContent = currency(revenue - comms - prizes);
+  } catch (e) {
+    handleError('dashboard metrics', e);
+  }
+}
+
+/* Lotteries */
+const lotteriesContainer = document.getElementById('lotteries-container');
+document.getElementById('show-create-lottery').addEventListener('click', () => {
+  document.getElementById('create-lottery-form').style.display = 'block';
+});
+document.getElementById('cancel-create-lottery').addEventListener('click', () => {
+  document.getElementById('create-lottery-form').style.display = 'none';
+});
+document.getElementById('create-lottery').addEventListener('click', async () => {
+  const name = document.getElementById('lottery-name').value.trim();
+  const start = document.getElementById('lottery-start').value;
+  const end = document.getElementById('lottery-end').value;
+  const prize = safeNum(document.getElementById('lottery-prize').value) || 0;
+  const ticketPrice = safeNum(document.getElementById('lottery-ticketPrice').value) || 1;
+  if (!name) return alert('Provide name');
+  
+  try {
+    setLoadingState('create-lottery', true);
+    await db.collection('lotteries').add({
+      name, start, end, prize, ticketPrice, ticketCount: 0,
+      participants: [], winner: null, status: 'active',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: 'admin' // Hardcoded since auth is removed
+    });
+    document.getElementById('create-lottery-form').style.display = 'none';
+    document.getElementById('lottery-name').value = '';
+    document.getElementById('lottery-start').value = '';
+    document.getElementById('lottery-end').value = '';
+    document.getElementById('lottery-prize').value = '';
+    document.getElementById('lottery-ticketPrice').value = '';
+    alert('Lottery created successfully');
+  } catch (e) {
+    handleError('create lottery', e, 'Error creating lottery');
+  } finally {
+    setLoadingState('create-lottery', false);
+  }
+});
+
+/* Render lotteries */
+db.collection('lotteries').orderBy('createdAt', 'desc').onSnapshot(async snap => {
+  lotteriesContainer.innerHTML = '';
+  let totalParticipants = 0, totalWinners = 0;
+  const lotteries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+  for (const L of lotteries) {
+    const soldSnap = await db.collection('tickets').where('lotteryId', '==', L.id).where('sold', '==', true).get();
+    totalParticipants += soldSnap.size;
+    if (L.winner) totalWinners++;
+    const item = document.createElement('div');
+    item.className = 'border rounded p-3';
+    item.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div>
+          <div          <div class="font-semibold">${L.name}</div>
+          <div class="text-sm text-gray-500">${L.start} to ${L.end}</div>
+          <div class="text-sm">Prize: ${currency(L.prize)} | Ticket: ${currency(L.ticketPrice)}</div>
+          <div class="text-sm">Tickets sold: ${soldSnap.size} | Status: ${L.status}</div>
+          ${L.winner ? `<div class="text-sm font-semibold text-green-600">Winner: ${L.winner}</div>` : ''}
+        </div>
+        <div class="flex flex-col gap-1">
+          ${L.status === 'active' ? `
+            <button data-id="${L.id}" class="btn-draw-winner bg-blue-600 text-white px-2 py-1 rounded text-xs">Draw Winner</button>
+            <button data-id="${L.id}" class="btn-end-lottery bg-red-600 text-white px-2 py-1 rounded text-xs">End Lottery</button>
+          ` : ''}
+          <button data-id="${L.id}" class="btn-delete-lottery bg-gray-600 text-white px-2 py-1 rounded text-xs">Delete</button>
+        </div>
+      </div>
+    `;
+    lotteriesContainer.appendChild(item);
+  }
+  
+  // Update dashboard metrics
+  elTotalParticipants.textContent = totalParticipants;
+  elTotalWinners.textContent = totalWinners;
+  
+  // Attach event listeners to lottery buttons
+  attachLotteryEventListeners();
+}, error => {
+  handleError('lotteries listener', error, 'Failed to load lotteries');
+});
+
+function attachLotteryEventListeners() {
+  document.querySelectorAll('.btn-draw-winner').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const lotteryId = e.target.dataset.id;
+      try {
+        setLoadingState('lotteries-container', true);
+        
+        // Get all sold tickets for this lottery
+        const ticketsSnap = await db.collection('tickets')
+          .where('lotteryId', '==', lotteryId)
+          .where('sold', '==', true)
+          .get();
+          
+        if (ticketsSnap.empty) {
+          alert('No tickets sold for this lottery yet');
+          return;
+        }
+        
+        // Randomly select a winner
+        const tickets = ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const randomIndex = Math.floor(Math.random() * tickets.length);
+        const winnerTicket = tickets[randomIndex];
+        const winnerEmail = winnerTicket.ownerEmail;
+        
+        // Update lottery with winner
+        await db.collection('lotteries').doc(lotteryId).update({
+          winner: winnerEmail,
+          status: 'completed',
+          endedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Create a prize payout record
+        const lotteryDoc = await db.collection('lotteries').doc(lotteryId).get();
+        const lottery = lotteryDoc.data();
+        
+        await db.collection('payouts').add({
+          type: 'prize',
+          employeeEmail: winnerEmail,
+          amount: lottery.prize,
+          total: lottery.prize,
+          status: 'pending',
+          lotteryId: lotteryId,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert(`Winner drawn: ${winnerEmail}`);
+      } catch (error) {
+        handleError('draw winner', error, 'Error drawing winner');
+      } finally {
+        setLoadingState('lotteries-container', false);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.btn-end-lottery').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const lotteryId = e.target.dataset.id;
+      if (!confirm('End this lottery? This cannot be undone.')) return;
+      
+      try {
+        setLoadingState('lotteries-container', true);
+        await db.collection('lotteries').doc(lotteryId).update({
+          status: 'ended',
+          endedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Lottery ended successfully');
+      } catch (error) {
+        handleError('end lottery', error, 'Error ending lottery');
+      } finally {
+        setLoadingState('lotteries-container', false);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.btn-delete-lottery').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const lotteryId = e.target.dataset.id;
+      if (!confirm('Delete this lottery? This will also remove all associated tickets.')) return;
+      
+      try {
+        setLoadingState('lotteries-container', true);
+        
+        // First delete all tickets for this lottery
+        const ticketsSnap = await db.collection('tickets')
+          .where('lotteryId', '==', lotteryId)
+          .get();
+          
+        const batch = db.batch();
+        ticketsSnap.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        
+        // Then delete the lottery itself
+        await db.collection('lotteries').doc(lotteryId).delete();
+        
+        alert('Lottery deleted successfully');
+      } catch (error) {
+        handleError('delete lottery', error, 'Error deleting lottery');
+      } finally {
+        setLoadingState('lotteries-container', false);
+      }
+    });
+  });
+}
+
+/* Commission tracking */
+const commissionsBody = document.getElementById('commissions-body');
+db.collection('commissions').orderBy('createdAt', 'desc').limit(5).onSnapshot(snap => {
+  commissionsBody.innerHTML = '';
+  let totalCommissions = 0;
+  
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    totalCommissions += safeNum(data.amount) || 0;
+    
+    commissionsBody.innerHTML += `
+      <tr>
+        <td class="py-1">${data.employeeName || data.employeeEmail || 'Unknown'}</td>
+        <td>${currency(data.amount)}</td>
+        <td>${data.source || 'Sale'}</td>
+      </tr>
+    `;
+  });
+  
+  // Update dashboard metric
+  elTotalCommissions.textContent = currency(totalCommissions);
+}, error => {
+  handleError('commissions listener', error);
+});
+
+/* Payouts tracking */
+const payoutsBody = document.getElementById('payouts-body');
+db.collection('payouts').orderBy('createdAt', 'desc').limit(5).onSnapshot(snap => {
+  payoutsBody.innerHTML = '';
+  
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    const statusClass = data.status === 'paid' ? 'status-complete' : 
+                       data.status === 'pending' ? 'status-mid' : 'status-bad';
+    
+    payoutsBody.innerHTML += `
+      <tr>
+        <td class="py-1">${data.employeeName || data.employeeEmail || 'Unknown'}</td>
+        <td>${currency(data.total)}</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          ${data.status === 'pending' ? 
+            `<button data-id="${doc.id}" class="btn-mark-paid text-blue-600 text-xs">Mark Paid</button>` : 
+            ''
+          }
+        </td>
+      </tr>
+    `;
+  });
+  
+  // Attach event listeners to mark paid buttons
+  document.querySelectorAll('.btn-mark-paid').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const payoutId = e.target.dataset.id;
+      try {
+        setLoadingState('payouts-body', true);
+        await db.collection('payouts').doc(payoutId).update({
+          status: 'paid',
+          paidAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Payout marked as paid');
+      } catch (error) {
+        handleError('mark payout paid', error, 'Error updating payout status');
+      } finally {
+        setLoadingState('payouts-body', false);
+      }
+    });
+  });
+}, error => {
+  handleError('payouts listener', error);
+});
+
+/* Compliance Section */
+document.getElementById('btn-add-compliance').addEventListener('click', async () => {
+  const employeeEmail = prompt('Employee email:');
+  if (!employeeEmail) return;
+  
+  const requirement = prompt('Requirement:');
+  if (!requirement) return;
+  
+  const deadline = prompt('Deadline (YYYY-MM-DD):');
+  if (!deadline) return;
+  
+  try {
+    setLoadingState('compliance-items-body', true);
+    await db.collection('compliance').add({
+      employeeEmail,
+      requirement,
+      deadline,
+      status: 'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('Compliance item added successfully');
+  } catch (error) {
+    handleError('add compliance', error, 'Error adding compliance item');
+  } finally {
+    setLoadingState('compliance-items-body', false);
+  }
+});
+
+// Render compliance items
+const complianceItemsBody = document.getElementById('compliance-items-body');
+db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
+  complianceItemsBody.innerHTML = '';
+  const deadlinesContainer = document.getElementById('compliance-deadlines');
+  const alertsContainer = document.getElementById('compliance-alerts');
+  
+  let deadlinesHtml = '';
+  let alertsHtml = '';
+  const today = new Date();
+  
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    const deadlineDate = new Date(data.deadline);
+    const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+    
+    const statusClass = data.status === 'complete' ? 'status-complete' : 
+                       daysLeft < 0 ? 'status-bad' : 
+                       daysLeft < 7 ? 'status-mid' : 'status-good';
+    
+    // Compliance table row
+    complianceItemsBody.innerHTML += `
+      <tr>
+        <td class="py-1">${data.employeeEmail}</td>
+        <td>${data.requirement}</td>
+        <td>${data.deadline}</td>
+        <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+        <td>
+          ${data.status !== 'complete' ? 
+            `<button data-id="${doc.id}" class="btn-mark-complete text-green-600 text-xs">Mark Complete</button>` : 
+            ''
+          }
+          <button data-id="${doc.id}" class="btn-delete-compliance text-red-600 text-xs ml-2">Delete</button>
+        </td>
+      </tr>
+    `;
+    
+    // Upcoming deadlines
+    if (daysLeft >= 0 && daysLeft <= 14) {
+      deadlinesHtml += `
+        <div class="flex justify-between items-center">
+          <div>${data.requirement} - ${data.employeeEmail}</div>
+          <span class="status-badge ${statusClass}">${daysLeft}d</span>
+        </div>
+      `;
+    }
+    
+    // Alerts for overdue or critical items
+    if (daysLeft < 0 || daysLeft < 3) {
+      alertsHtml += `
+        <div class="flex justify-between items-center p-2 bg-red-50 rounded">
+          <div class="text-sm">${data.requirement} - ${data.employeeEmail}</div>
+          <span class="status-badge ${daysLeft < 0 ? 'status-bad' : 'status-mid'}">
+            ${daysLeft < 0 ? 'Overdue' : `${daysLeft}d left`}
+          </span>
+        </div>
+      `;
+    }
+  });
+  
+  deadlinesContainer.innerHTML = deadlinesHtml || '<p class="text-sm text-gray-500">No upcoming deadlines</p>';
+  alertsContainer.innerHTML = alertsHtml || '<p class="text-sm text-gray-500">No alerts</p>';
+  
+  // Attach event listeners
+  document.querySelectorAll('.btn-mark-complete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const complianceId = e.target.dataset.id;
+      try {
+        setLoadingState('compliance-items-body', true);
+        await db.collection('compliance').doc(complianceId).update({
+          status: 'complete',
+          completedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Compliance item marked as complete');
+      } catch (error) {
+        handleError('mark compliance complete', error, 'Error updating compliance status');
+      } finally {
+        setLoadingState('compliance-items-body', false);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.btn-delete-compliance').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const complianceId = e.target.dataset.id;
+      if (!confirm('Delete this compliance item?')) return;
+      
+      try {
+        setLoadingState('compliance-items-body', true);
+        await db.collection('compliance').doc(complianceId).delete();
+        alert('Compliance item deleted');
+      } catch (error) {
+        handleError('delete compliance', error, 'Error deleting compliance item');
+      } finally {
+        setLoadingState('compliance-items-body', false);
+      }
+    });
+  });
+}, error => {
+  handleError('compliance listener', error);
+});
+
+/* Commission Engine */
+document.getElementById('btn-new-rule').addEventListener('click', () => {
+  const name = prompt('Rule name:');
+  if (!name) return;
+  
+  const condition = prompt('Condition (e.g., sales > 10000):');
+  if (!condition) return;
+  
+  const action = prompt('Action (e.g., commission = sales * 0.1):');
+  if (!action) return;
+  
+  try {
+    setLoadingState('rules-list', true);
+    db.collection('commissionRules').add({
+      name,
+      condition,
+      action,
+      active: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert('Commission rule added successfully');
+  } catch (error) {
+    handleError('add commission rule', error, 'Error adding commission rule');
+  } finally {
+    setLoadingState('rules-list', false);
+  }
+});
+
+// Render commission rules
+const rulesList = document.getElementById('rules-list');
+db.collection('commissionRules').orderBy('createdAt', 'desc').onSnapshot(snap => {
+  rulesList.innerHTML = '';
+  
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    
+    rulesList.innerHTML += `
+      <div class="border rounded p-3">
+        <div class="flex justify-between items-center">
+          <div class="font-semibold">${data.name}</div>
+          <span class="status-badge ${data.active ? 'status-good' : 'status-bad'}">
+            ${data.active ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+        <div class="text-sm mt-1">If: ${data.condition}</div>
+        <div class="text-sm">Then: ${data.action}</div>
+        <div class="mt-2 flex gap-2">
+          <button data-id="${doc.id}" data-active="${data.active}" 
+            class="btn-toggle-rule text-xs ${data.active ? 'bg-gray-600' : 'bg-green-600'} text-white px-2 py-1 rounded">
+            ${data.active ? 'Deactivate' : 'Activate'}
+          </button>
+          <button data-id="${doc.id}" class="btn-delete-rule text-xs bg-red-600 text-white px-2 py-1 rounded">
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  // Attach event listeners
+  document.querySelectorAll('.btn-toggle-rule').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const ruleId = e.target.dataset.id;
+      const currentlyActive = e.target.dataset.active === 'true';
+      
+      try {
+        setLoadingState('rules-list', true);
+        await db.collection('commissionRules').doc(ruleId).update({
+          active: !currentlyActive
+        });
+        alert(`Rule ${currentlyActive ? 'deactivated' : 'activated'} successfully`);
+      } catch (error) {
+        handleError('toggle rule', error, 'Error updating rule status');
+      } finally {
+        setLoadingState('rules-list', false);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.btn-delete-rule').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const ruleId = e.target.dataset.id;
+      if (!confirm('Delete this commission rule?')) return;
+      
+      try {
+        setLoadingState('rules-list', true);
+        await db.collection('commissionRules').doc(ruleId).delete();
+        alert('Commission rule deleted');
+      } catch (error) {
+        handleError('delete rule', error, 'Error deleting commission rule');
+      } finally {
+        setLoadingState('rules-list', false);
+      }
+    });
+  });
+}, error => {
+  handleError('commission rules listener', error);
+});
+
+/* Payroll Section */
+document.getElementById('btn-generate-payroll').addEventListener('click', async () => {
+  const month = document.getElementById('payroll-month').value || monthKey();
+  if (!month) return alert('Please select a month');
+  
+  try {
+    setLoadingState('payroll-body', true);
+    const { start, end } = monthRange(month);
+    
+    // Get all employees
+    const employeesSnap = await db.collection('employees').get();
+    const employees = employeesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // Get sales for the selected month
+    const salesSnap = await db.collection('sales')
+      .where('soldAt', '>=', start)
+      .where('soldAt', '<=', end)
+      .get();
+    
+    // Group sales by employee
+    const salesByEmployee = {};
+    salesSnap.docs.forEach(doc => {
+      const sale = doc.data();
+      const email = sale.employeeEmail;
+      if (!salesByEmployee[email]) salesByEmployee[email] = 0;
+      salesByEmployee[email] += safeNum(sale.price) || 0;
+    });
+    
+    // Calculate payroll for each employee
+    const payrollBody = document.getElementById('payroll-body');
+    payrollBody.innerHTML = '';
+    
+    let payrollData = [];
+    
+    for (const emp of employees) {
+      const sales = salesByEmployee[emp.email] || 0;
+      const commissionRate = safeNum(emp.commission) / 100 || 0;
+      const commission = sales * commissionRate;
+      
+      // Calculate bonus if target is exceeded
+      let bonus = 0;
+      if (emp.targetSales && sales > emp.targetSales) {
+        const bonusRate = safeNum(emp.bonusRate) / 100 || 0;
+        const excess = sales - emp.targetSales;
+        bonus = excess * bonusRate;
+      }
+      
+      const total = safeNum(emp.salary) + commission + bonus;
+      
+      payrollData.push({
+        employee: emp,
+        sales,
+        commission,
+        bonus,
+        total
+      });
+      
+      payrollBody.innerHTML += `
+        <tr>
+          <td class="py-1">${emp.name} (${emp.email})</td>
+          <td>${currency(emp.salary)}</td>
+          <td>${currency(sales)}</td>
+          <td>${currency(commission)}</td>
+          <td>${currency(bonus)}</td>
+          <td class="font-semibold">${currency(total)}</td>
+        </tr>
+      `;
+    }
+    
+    // Store computed payroll for potential saving
+    window.lastComputedPayroll = {
+      month,
+      data: payrollData,
+      computedAt: new Date()
+    };
+    
+  } catch (error) {
+    handleError('generate payroll', error, 'Error generating payroll');
+  } finally {
+    setLoadingState('payroll-body', false);
+  }
+});
+
+document.getElementById('btn-save-payroll').addEventListener('click', async () => {
+  if (!window.lastComputedPayroll) {
+    alert('Please generate payroll first');
+    return;
+  }
+  
+  if (!confirm('Save this payroll to payouts? This will create payout records for each employee.')) return;
+  
+  try {
+    setLoadingState('payroll-body', true);
+    const batch = db.batch();
+    const payoutsRef = db.collection('payouts');
+    
+    for (const item of window.lastComputedPayroll.data) {
+      const { employee, sales, commission, bonus, total } = item;
+      
+      if (total > 0) {
+        const payoutRef = payoutsRef.doc();
+        batch.set(payoutRef, {
+          type: 'salary',
+          employeeEmail: employee.email,
+          employeeName: employee.name,
+          baseSalary: employee.salary,
+          sales: sales,
+          commission: commission,
+          bonus: bonus,
+          total: total,
+          status: 'pending',
+          period: window.lastComputedPayroll.month,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+    
+    await batch.commit();
+    alert('Payroll saved to payouts successfully');
+  } catch (error) {
+    handleError('save payroll', error, 'Error saving payroll to payouts');
+  } finally {
+    setLoadingState('payroll-body', false);
+  }
+});
+
+/* Accounting Section */
+document.getElementById('btn-refresh-acct').addEventListener('click', refreshAccounting);
+async function refreshAccounting() {
+  const month = document.getElementById('acct-month').value || monthKey();
+  if (!month) return;
+  
+  try {
+    setLoadingState('acct-breakdown', true);
+    const { start, end } = monthRange(month);
+    
+    // Get revenue from sales
+    const salesSnap = await db.collection('sales')
+      .where('soldAt', '>=', start)
+      .where('soldAt', '<=', end)
+      .get();
+    
+    let revenue = 0;
+    const breakdown = [];
+    
+    salesSnap.docs.forEach(doc => {
+      const sale = doc.data();
+      const amount = safeNum(sale.price) || 0;
+      revenue += amount;
+      breakdown.push({
+        type: 'revenue',
+        reference: sale.lotteryName || 'Sale',
+        amount: amount,
+        date: sale.soldAt?.toDate?.() || new Date()
+      });
+    });
+    
+    // Get prize payouts
+    const prizeSnap = await db.collection('payouts')
+      .where('type', '==', 'prize')
+      .where('createdAt', '>=', start)
+      .where('createdAt', '<=', end)
+      .where('status', '==', 'paid')
+      .get();
+    
+    let prizes = 0;
+    prizeSnap.docs.forEach(doc => {
+      const payout = doc.data();
+      const amount = safeNum(payout.amount) || 0;
+      prizes += amount;
+      breakdown.push({
+        type: 'payout',
+        reference: `Prize: ${payout.employeeEmail}`,
+        amount: -amount,
+        date: payout.paidAt?.toDate?.() || new Date()
+      });
+    });
+    
+    // Get commission payouts
+    const commissionSnap = await db.collection('payouts')
+      .where('type', '==', 'salary')
+      .where('createdAt', '>=', start)
+      .where('createdAt', '<=', end)
+      .where('status', '==', 'paid')
+      .get();
+    
+    let commissions = 0;
+    commissionSnap.docs.forEach(doc => {
+      const payout = doc.data();
+      const amount = safeNum(payout.total) || 0;
+      commissions += amount;
+      breakdown.push({
+        type: 'payout',
+        reference: `Salary: ${payout.employeeEmail}`,
+        amount: -amount,
+        date: payout.paidAt?.toDate?.() || new Date()
+      });
+    });
+    
+    // Calculate profit
+    const profit = revenue - prizes - commissions;
+    
+    // Update UI
+    document.getElementById('acct-revenue').textContent = currency(revenue);
+    document.getElementById('acct-prizes').textContent = currency(prizes);
+    document.getElementById('acct-comm').textContent = currency(commissions);
+    document.getElementById('acct-profit').textContent = currency(profit);
+    
+    // Render breakdown
+    const breakdownBody = document.getElementById('acct-breakdown');
+    breakdownBody.innerHTML = '';
+    
+    breakdown.sort((a, b) => b.date - a.date).forEach(item => {
+      const amountClass = item.amount >= 0 ? 'text-green-600' : 'text-red-600';
+      breakdownBody.innerHTML += `
+        <tr>
+          <td class="py-1">${item.type}</td>
+          <td>${item.reference}</td>
+          <td class="${amountClass}">${currency(Math.abs(item.amount))}</td>
+          <td>${item.date.toLocaleDateString()}</td>
+        </tr>
+      `;
+    });
+    
+  } catch (error) {
+    handleError('accounting refresh', error, 'Error refreshing accounting data');
+  } finally {
+    setLoadingState('acct-breakdown', false);
+  }
+}
+
+// Initialize with current month
+document.getElementById('payroll-month').value = monthKey();
+document.getElementById('acct-month').value = monthKey();
+
+// Initial data load
+refreshAccounting();
+
+// Apply RBAC rules
+applyRBAC();
+
+// Initial user info display
+// document.getElementById('user-email').textContent = CURRENT_USER.email;
+// document.getElementById('user-role').textContent = CURRENT_ROLE.charAt(0).toUpperCase() + CURRENT_ROLE.slice(1);
+
+</script>
+</body>
+</html>

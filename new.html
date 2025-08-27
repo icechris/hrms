@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LotteryCorp HRMS Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#3b82f6',
+                        accent: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-complete {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .status-pending {
+            background-color: #fef9c3;
+            color: #854d0e;
+        }
+        .status-overdue {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .status-active {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .status-inactive {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .status-processed {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+        .status-processing {
+            background-color: #fef9c3;
+            color: #854d0e;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #6b7280;
+        }
+        .nav-tab {
+            padding: 1rem 1rem;
+            font-weight: 500;
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-tab.active {
+            color: #1e40af;
+            border-bottom: 2px solid #1e40af;
+        }
+        .nav-tab:hover {
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="flex items-center justify-between px-6 py-4">
+            <div class="flex items-center space-x-4">
+                <div class="bg-primary text-white p-2 rounded-lg">
+                    <i class="fas fa-shield-alt h-6 w-6"></i>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">LotteryCorp HRMS</h1>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <button class="p-2 rounded-full hover:bg-gray-100 relative">
+                        <i class="fas fa-bell text-gray-600"></i>
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
+                    </button>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <div class="avatar">AD</div>
+                    <div>
+                        <p class="text-sm font-medium">Admin User</p>
+                        <p class="text-xs text-gray-500">HR Manager</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b">
+        <div class="flex px-6">
+            <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab" data-tab="compliance">Compliance</button>
+            <button class="nav-tab" data-tab="commission">Commission Engine</button>
+        </div>
+    </nav>
+
+    <main class="p-6">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Total Employees</p>
+                            <p class="text-2xl font-bold mt-1">142</p>
+                            <p class="text-xs text-gray-500 mt-1">+2 from last month</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Avg. Performance</p>
+                            <p class="text-2xl font-bold mt-1">88.5%</p>
+                            <p class="text-xs text-gray-500 mt-1">+1.2% from last month</p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-lg">
+                            <i class="fas fa-star text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Compliance Rate</p>
+                            <p class="text-2xl font-bold mt-1">92%</p>
+                            <p class="text-xs text-gray-500 mt-1">+3% from last month</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-shield-alt text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Performance Trends</h3>
+                    <p class="text-sm text-gray-500 mb-4">Monthly performance metrics</p>
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Compliance Status</h3>
+                    <p class="text-sm text-gray-500 mb-4">Current compliance distribution</p>
+                    <div class="chart-container">
+                        <canvas id="complianceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold">Employee Performance</h3>
+                    <p class="text-sm text-gray-500">Top performers this month</p>
+                </div>
+                <div class="divide-y">
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="avatar">JS</div>
+                            <div>
+                                <p class="font-medium">John Smith</p>
+                                <p class="text-sm text-gray-500">Sales Manager</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right">
+                                <p class="font-medium">92%</p>
+                                <p class="text-sm text-gray-500">Performance</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium">$2,450</p>
+                                <p class="text-sm text-gray-500">Commission</p>
+                            </div>
+                            <div class="status-badge status-complete">Complete</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="avatar">SJ</div>
+                            <div>
+                                <p class="font-medium">Sarah Johnson</p>
+                                <p class="text-sm text-gray-500">Retail Associate</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right">
+                                <p class="font-medium">87%</p>
+                                <p class="text-sm text-gray-500">Performance</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium">$1,875</p>
+                                <p class="text-sm text-gray-500">Commission</p>
+                            </div>
+                            <div class="status-badge status-pending">Pending</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="avatar">MC</div>
+                            <div>
+                                <p class="font-medium">Michael Chen</p>
+                                <p class="text-sm text-gray-500">Compliance Officer</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right">
+                                <p class="font-medium">95%</p>
+                                <p class="text-sm text-gray-500">Performance</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium">$3,200</p>
+                                <p class="text-sm text-gray-500">Commission</p>
+                            </div>
+                            <div class="status-badge status-complete">Complete</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="avatar">ER</div>
+                            <div>
+                                <p class="font-medium">Emily Rodriguez</p>
+                                <p class="text-sm text-gray-500">Customer Service</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right">
+                                <p class="font-medium">78%</p>
+                                <p class="text-sm text-gray-500">Performance</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium">$1,200</p>
+                                <p class="text-sm text-gray-500">Commission</p>
+                            </div>
+                            <div class="status-badge status-overdue">Overdue</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="avatar">DW</div>
+                            <div>
+                                <p class="font-medium">David Wilson</p>
+                                <p class="text-sm text-gray-500">Regional Manager</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <div class="text-right">
+                                <p class="font-medium">89%</p>
+                                <p class="text-sm text-gray-500">Performance</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium">$4,100</p>
+                                <p class="text-sm text-gray-500">Commission</p>
+                            </div>
+                            <div class="status-badge status-complete">Complete</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compliance Tab -->
+        <div id="compliance" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Compliance Rate</p>
+                            <p class="text-2xl font-bold mt-1">92%</p>
+                            <p class="text-xs text-gray-500 mt-1">+3% from last month</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-shield-alt text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Pending Reviews</p>
+                            <p class="text-2xl font-bold mt-1">18</p>
+                            <p class="text-xs text-gray-500 mt-1">Requires attention</p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-lg">
+                            <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Overdue Items</p>
+                            <p class="text-2xl font-bold mt-1">3</p>
+                            <p class="text-xs text-gray-500 mt-1">Urgent action required</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-lg">
+                            <i class="fas fa-exclamation-circle text-red-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow mb-6">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold">Compliance Tracking</h3>
+                    <p class="text-sm text-gray-500">Monitor employee compliance status</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-3 px-4">Employee</th>
+                                <th class="text-left py-3 px-4">Requirement</th>
+                                <th class="text-left py-3 px-4">Deadline</th>
+                                <th class="text-left py-3 px-4">Status</th>
+                                <th class="text-left py-3 px-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">JS</div>
+                                        <span>John Smith</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Annual Security Training</td>
+                                <td class="py-3 px-4">2023-12-15</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-complete">Complete</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="p-2 rounded hover:bg-gray-100">
+                                        <i class="fas fa-edit text-gray-600"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">SJ</div>
+                                        <span>Sarah Johnson</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Data Protection Certification</td>
+                                <td class="py-3 px-4">2023-11-30</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-pending">Pending</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="p-2 rounded hover:bg-gray-100">
+                                        <i class="fas fa-edit text-gray-600"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">ER</div>
+                                        <span>Emily Rodriguez</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Gambling Regulations Update</td>
+                                <td class="py-3 px-4">2023-10-15</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-overdue">Overdue</span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button class="p-2 rounded hover:bg-gray-100">
+                                        <i class="fas fa-edit text-gray-600"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold">Upcoming Deadlines</h3>
+                        <p class="text-sm text-gray-500">Next 30 days</p>
+                    </div>
+                    <div class="divide-y">
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">Annual Compliance Review</p>
+                                <p class="text-sm text-gray-500">All employees</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="far fa-calendar text-gray-500"></i>
+                                <span>2023-11-25</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">New Hire Training</p>
+                                <p class="text-sm text-gray-500">5 new employees</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="far fa-calendar text-gray-500"></i>
+                                <span>2023-11-30</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">Security Certification Renewal</p>
+                                <p class="text-sm text-gray-500">IT Department</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="far fa-calendar text-gray-500"></i>
+                                <span>2023-12-05</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold">Compliance Alerts</h3>
+                        <p class="text-sm text-gray-500">Recent notifications</p>
+                    </div>
+                    <div class="divide-y">
+                        <div class="flex items-start space-x-3 p-4 bg-red-50">
+                            <div class="mt-1">
+                                <i class="fas fa-exclamation-circle text-red-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium">Overdue Compliance</p>
+                                <p class="text-sm">Emily Rodriguez has not completed Gambling Regulations training</p>
+                                <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3 p-4 bg-yellow-50">
+                            <div class="mt-1">
+                                <i class="fas fa-bell text-yellow-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium">Pending Review</p>
+                                <p class="text-sm">Sarah Johnson's Data Protection Certification requires review</p>
+                                <p class="text-xs text-gray-500 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3 p-4 bg-green-50">
+                            <div class="mt-1">
+                                <i class="fas fa-check-circle text-green-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium">Compliance Complete</p>
+                                <p class="text-sm">John Smith completed Annual Security Training</p>
+                                <p class="text-xs text-gray-500 mt-1">2 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commission Engine Tab -->
+        <div id="commission" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Total Payout</p>
+                            <p class="text-2xl font-bold mt-1">$24,850</p>
+                            <p class="text-xs text-gray-500 mt-1">This month</p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-lg">
+                            <i class="fas fa-star text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Active Rules</p>
+                            <p class="text-2xl font-bold mt-1">2</p>
+                            <p class="text-xs text-gray-500 mt-1">Out of 3 rules</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-lg">
+                            <i class="fas fa-check text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Avg. Commission</p>
+                            <p class="text-2xl font-bold mt-1">$2,485</p>
+                            <p class="text-xs text-gray-500 mt-1">Per employee</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-lg">
+                            <i class="fas fa-users text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold">Commission Rules</h3>
+                        <p class="text-sm text-gray-500">Manage commission calculation rules</p>
+                    </div>
+                    <div class="divide-y">
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">Sales Target Bonus</p>
+                                <p class="text-sm text-gray-500">5% bonus for exceeding monthly sales target</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-check text-green-500"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-edit text-gray-600"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-trash text-gray-600"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">Retention Bonus</p>
+                                <p class="text-sm text-gray-500">10% bonus for customer retention over 90%</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-check text-green-500"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-edit text-gray-600"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-trash text-gray-600"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-4">
+                            <div>
+                                <p class="font-medium">Compliance Bonus</p>
+                                <p class="text-sm text-gray-500">2% bonus for perfect compliance record</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-times text-red-500"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-edit text-gray-600"></i>
+                                </button>
+                                <button class="p-2 rounded hover:bg-gray-100">
+                                    <i class="fas fa-trash text-gray-600"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-6 border-b">
+                        <h3 class="text-lg font-semibold">Add New Rule</h3>
+                        <p class="text-sm text-gray-500">Create a new commission rule</p>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+                            <input type="text" id="rule-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g. Sales Target Bonus">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <textarea id="rule-description" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Describe the rule conditions and calculations" rows="3"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="rule-status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                        <button class="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-blue-700 transition flex items-center justify-center">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Rule
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow">
+                <div class="p-6 border-b">
+                    <h3 class="text-lg font-semibold">Commission Payouts</h3>
+                    <p class="text-sm text-gray-500">Current month calculations</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-3 px-4">Employee</th>
+                                <th class="text-left py-3 px-4">Role</th>
+                                <th class="text-left py-3 px-4">Base Salary</th>
+                                <th class="text-left py-3 px-4">Commission</th>
+                                <th class="text-left py-3 px-4">Total</th>
+                                <th class="text-left py-3 px-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">JS</div>
+                                        <span>John Smith</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Sales Manager</td>
+                                <td class="py-3 px-4">$5,000</td>
+                                <td class="py-3 px-4">$2,450</td>
+                                <td class="py-3 px-4 font-medium">$7,450</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-processed">Processed</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">SJ</div>
+                                        <span>Sarah Johnson</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Retail Associate</td>
+                                <td class="py-3 px-4">$3,200</td>
+                                <td class="py-3 px-4">$1,875</td>
+                                <td class="py-3 px-4 font-medium">$5,075</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-processing">Pending</span>
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="avatar">DW</div>
+                                        <span>David Wilson</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">Regional Manager</td>
+                                <td class="py-3 px-4">$7,500</td>
+                                <td class="py-3 px-4">$4,100</td>
+                                <td class="py-3 px-4 font-medium">$11,600</td>
+                                <td class="py-3 px-4">
+                                    <span class="status-badge status-processed">Processed</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.nav-tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and contents
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Show corresponding content
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Initialize charts
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(performanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Performance %',
+                        data: [85, 88, 92, 87, 91, 94],
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#2563eb',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            // Compliance Chart
+            const complianceCtx = document.getElementById('complianceChart').getContext('2d');
+            const complianceChart = new Chart(complianceCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Complete', 'Pending', 'Overdue'],
+                    datasets: [{
+                        data: [65, 25, 10],
+                        backgroundColor: [
+                            '#10b981',
+                            '#f59e0b',
+                            '#ef4444'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

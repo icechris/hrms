@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LotteryCorp HRMS — Full Dashboard (Firestore)</title>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Firebase compat libs (auth + firestore) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root { --card-bg: #fff; --muted: #6b7280; }
+body{background:#f8fafc}
+.avatar{width:36px;height:36px;border-radius:999px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151}
+.status-badge{padding:.25rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+.status-good{background:#dcfce7;color:#166534}
+.status-mid{background:#fef3c7;color:#92400e}
+.status-bad{background:#fee2e2;color:#991b1b}
+.status-complete{background:#d1fae5;color:#065f46}
+.card { background: var(--card-bg); border-radius: .75rem; padding: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.05); }
+.nav-tab { cursor:pointer; padding:0.75rem 1rem; font-weight:600; color:var(--muted); }
+.nav-tab.active { color:#1e40af; border-bottom:3px solid #1e40af; }
+.chart-container{height:260px}
+table td, table th { vertical-align: middle; }
+.input{border:1px solid #e5e7eb;border-radius:.5rem;padding:.5rem .75rem}
+.btn{border-radius:.5rem;padding:.5rem .75rem}
+.hidden-by-role{display:none!important}
+</style>
+</head>
+<body class="min-h-screen">
+<!-- Header -->
+<header class="bg-white shadow">
+<div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="bg-blue-700 text-white p-2 rounded-lg"><i class="fas fa-ticket-alt"></i></div>
+<h1 class="text-xl font-bold text-gray-800">LotteryCorp HRMS</h1>
+</div>
+<div class="flex items-center gap-4">
+<div id="auth-area" class="flex items-center gap-3">
+<div id="signed-out" class="flex items-center gap-2">
+<input id="login-email" placeholder="email" class="border rounded px-2 py-1 text-sm" />
+<input id="login-password" placeholder="password" type="password" class="border rounded px-2 py-1 text-sm" />
+<button id="btn-login" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Sign in</button>
+<button id="btn-signup" class="bg-gray-200 text-gray-800 px-2 py-1 rounded text-sm">Sign up</button>
+</div>
+<div id="signed-in" class="flex items-center gap-3" style="display:none;">
+<div class="flex items-center gap-2">
+<div id="user-initials" class="avatar">--</div>
+<div>
+<div id="user-email" class="text-sm font-medium text-gray-700">user@example.com</div>
+<div id="user-role" class="text-xs text-gray-500">role</div>
+</div>
+<button id="btn-logout" class="ml-3 text-sm text-red-600 hover:underline">Logout</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Top tabs -->
+<div class="border-t">
+<div class="max-w-7xl mx-auto flex px-6 overflow-x-auto">
+<div id="tab-dashboard" class="nav-tab active" data-target="dashboard-section">Dashboard</div>
+<div id="tab-compliance" class="nav-tab" data-target="compliance-section">Compliance</div>
+<div id="tab-commission" class="nav-tab" data-target="commission-section">Commission Engine</div>
+<div id="tab-lotteries" class="nav-tab" data-target="lotteries-section">Lotteries</div>
+<div id="tab-payroll" class="nav-tab" data-target="payroll-section">Payroll</div>
+<div id="tab-accounting" class="nav-tab ml-auto" data-target="accounting-section">Accounting</div>
+</div>
+</div>
+</header>
+<!-- Main content -->
+<main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+<!-- Dashboard / main area (spans 3 columns) -->
+<section id="dashboard-section" class="lg:col-span-3">
+<!-- Metrics -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+<div class="card">
+<p class="text-sm text-gray-500">Total Employees</p>
+<p id="total-employees" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Active Participants</p>
+<p id="total-participants" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Total Winners</p>
+<p id="total-winners" class="text-2xl font-bold">0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Total Commissions (₵)</p>
+<p id="total-commissions" class="text-2xl font-bold">₵0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Revenue (₵ — this month)</p>
+<p id="metric-revenue" class="text-2xl font-bold">₵0</p>
+</div>
+<div class="card">
+<p class="text-sm text-gray-500">Profit (₵ — this month)</p>
+<p id="metric-profit" class="text-2xl font-bold">₵0</p>
+</div>
+</div>
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+<div class="card lg:col-span-2">
+<p class="font-semibold mb-2">Sales / Commission by Employee</p>
+<div class="chart-container"><canvas id="salesCommissionChart"></canvas></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Role Distribution</p>
+<div class="chart-container"><canvas id="roleChart"></canvas></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Employee Performance</p>
+<div class="chart-container"><canvas id="performanceChart"></canvas></div>
+</div>
+</div>
+<!-- Employee table -->
+<div class="card mb-4">
+<div class="flex items-center justify-between mb-3">
+<div><p class="font-semibold">Employees</p><p class="text-sm text-gray-500">Add / remove employees</p></div>
+</div>
+<form id="add-employee-form" class="grid grid-cols-1 md:grid-cols-6 gap-2 mb-4">
+<input id="emp-name" placeholder="Full name" class="border p-2 rounded" required />
+<input id="emp-email" placeholder="Email" type="email" class="border p-2 rounded" required />
+<select id="emp-role" class="border p-2 rounded">
+<option value="employee">Employee</option>
+<option value="manager">Manager</option>
+<option value="hr">HR</option>
+<option value="accountant">Accountant</option>
+<option value="admin">Admin</option>
+</select>
+<input id="emp-salary" placeholder="Salary (₵)" type="number" class="border p-2 rounded" />
+<input id="emp-commission" placeholder="Commission % (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-branch" placeholder="Branch" class="border p-2 rounded" />
+<input id="emp-target" placeholder="Monthly target (₵, optional)" type="number" class="border p-2 rounded md:col-span-2" />
+<input id="emp-bonusRate" placeholder="Bonus % over target (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-performance" placeholder="Performance (optional)" type="number" class="border p-2 rounded" />
+<input id="emp-sales" placeholder="Sales (optional)" type="number" class="border p-2 rounded" />
+<div class="md:col-span-1">
+<button id="btn-add-employee" class="bg-blue-600 text-white px-3 py-1 rounded w-full">Add</button>
+</div>
+</form>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Name</th><th>Email</th><th>Role</th><th>Sales (this mo.)</th><th>Comm %</th><th>Target</th><th>Bonus %</th><th>Actions</th></tr></thead>
+<tbody id="employees-table-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Right sidebar (commissions + payouts) -->
+<aside class="space-y-6">
+<div class="card">
+<p class="font-semibold mb-2">Commissions (recent)</p>
+<div class="overflow-y-auto" style="max-height:260px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Employee</th><th>Amount</th><th>Source</th></tr></thead>
+<tbody id="commissions-body"></tbody>
+</table>
+</div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Payouts (recent)</p>
+<div class="overflow-y-auto" style="max-height:260px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Employee</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="payouts-body"></tbody>
+</table>
+</div>
+</div>
+</aside>
+<!-- Compliance Section -->
+<section id="compliance-section" class="hidden lg:col-span-3">
+<div class="card mb-4">
+<div class="flex items-center justify-between">
+<div>
+<p class="font-semibold">Compliance Management</p>
+<p class="text-sm text-gray-500">Track items, deadlines & alerts</p>
+</div>
+<div>
+<button id="btn-add-compliance" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Add Item</button>
+</div>
+</div>
+</div>
+<div class="card mb-4">
+<table class="w-full text-left">
+<thead><tr><th>Employee</th><th>Requirement</th><th>Deadline</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="compliance-items-body"></tbody>
+</table>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<div class="card">
+<p class="font-semibold">Upcoming Deadlines</p>
+<div id="compliance-deadlines" class="mt-3 space-y-2"></div>
+</div>
+<div class="card">
+<p class="font-semibold">Compliance Alerts</p>
+<div id="compliance-alerts" class="mt-3 space-y-2"></div>
+</div>
+</div>
+</section>
+<!-- Commission Engine Section -->
+<section id="commission-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Commission Engine</p>
+<p class="text-sm text-gray-500">Manage rules and compute payouts</p>
+</div>
+<div>
+<button id="btn-new-rule" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Rule</button>
+</div>
+</div>
+<div class="card mb-4">
+<p class="font-semibold mb-2">Rules</p>
+<div id="rules-list" class="space-y-2"></div>
+</div>
+<div class="card mb-4">
+<p class="font-semibold mb-2">Payouts</p>
+<div class="overflow-y-auto" style="max-height:300px">
+<table class="w-full text-left">
+<thead><tr><th>Employee</th><th>Commission</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="engine-payouts-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Lotteries Section -->
+<section id="lotteries-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Lotteries</p>
+<p class="text-sm text-gray-500">Create lotteries, manage tickets & draw winners</p>
+</div>
+<div>
+<button id="show-create-lottery" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Lottery</button>
+</div>
+</div>
+<div id="create-lottery-form" class="card mb-4" style="display:none">
+<div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
+<input id="lottery-name" placeholder="Lottery name" class="input" />
+<input id="lottery-start" type="date" class="input" />
+<input id="lottery-end" type="date" class="input" />
+<input id="lottery-prize" type="number" placeholder="Prize (₵)" class="input" />
+<input id="lottery-ticketPrice" type="number" placeholder="Ticket price (₵)" class="input" />
+</div>
+<div class="flex items-center gap-2">
+<button id="create-lottery" class="bg-blue-600 text-white px-3 py-1 rounded">Create</button>
+<button id="cancel-create-lottery" class="bg-gray-200 px-3 py-1 rounded">Cancel</button>
+</div>
+</div>
+<div id="lotteries-container" class="space-y-3"></div>
+<!-- Employee Compliance Tasks -->
+<div class="card mb-4">
+<p class="font-semibold mb-2">My Compliance Tasks</p>
+<p class="text-sm text-gray-500 mb-2">View and submit required compliance documents</p>
+<div class="overflow-y-auto" style="max-height:300px">
+<table class="w-full text-left">
+<thead><tr><th class="py-2">Requirement</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="employee-compliance-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Payroll Section -->
+<section id="payroll-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Payroll</p>
+<p class="text-sm text-gray-500">Auto-generate monthly payroll from sales & bonuses</p>
+</div>
+<div class="flex items-center gap-2">
+<input id="payroll-month" class="input" type="month"/>
+<button id="btn-generate-payroll" class="bg-blue-600 text-white btn">Compute</button>
+<button id="btn-save-payroll" class="bg-green-600 text-white btn">Save to Payouts</button>
+</div>
+</div>
+<div class="card">
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr>
+<th>Employee</th><th>Base</th><th>Sales (₵)</th><th>Commission (₵)</th><th>Bonus (₵)</th><th>Total (₵)</th>
+</tr>
+</thead>
+<tbody id="payroll-body"></tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Accounting Section -->
+<section id="accounting-section" class="hidden lg:col-span-3">
+<div class="card mb-4 flex items-center justify-between">
+<div>
+<p class="font-semibold">Accounting</p>
+<p class="text-sm text-gray-500">Revenue, prize payouts, commissions & profit</p>
+</div>
+<div class="flex items-center gap-2">
+<input id="acct-month" class="input" type="month"/>
+<button id="btn-refresh-acct" class="bg-blue-600 text-white btn">Refresh</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+<div class="card"><p class="text-sm text-gray-500">Revenue (₵)</p><p id="acct-revenue" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Prize Payouts (₵)</p><p id="acct-prizes" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Commissions (₵)</p><p id="acct-comm" class="text-2xl font-bold">₵0</p></div>
+<div class="card"><p class="text-sm text-gray-500">Profit (₵)</p><p id="acct-profit" class="text-2xl font-bold">₵0</p></div>
+</div>
+<div class="card">
+<p class="font-semibold mb-2">Breakdown (this month)</p>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead><tr><th>Type</th><th>Reference</th><th>Amount (₵)</th><th>Date</th></tr></thead>
+<tbody id="acct-breakdown"></tbody>
+</table>
+</div>
+</div>
+</section>
+</main>
+<!-- Simple modals are still prompt() based for this single-file demo -->
+<script>
+/* Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyD3FdDFTm2-ic5jRgTgKm8BwKTwvRb0fuw",
+  authDomain: "lotteryhrms.firebaseapp.com",
+  projectId: "lotteryhrms",
+  storageBucket: "lotteryhrms.firebasestorage.app",
+  messagingSenderId: "46749836470",
+  appId: "1:46749836470:web:42d899c220ccfa61713217"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* Helpers */
+const currency = v => `₵${Number(v||0).toLocaleString()}`;
+const safeNum = v => isNaN(Number(v)) ? 0 : Number(v);
+const monthKey = (d) => {
+  const dt = d ? new Date(d) : new Date();
+  const y = dt.getFullYear(); const m = (dt.getMonth()+1).toString().padStart(2,'0');
+  return `${y}-${m}`;
+};
+const monthRange = (ym) => {
+  const [y,m] = ym.split('-').map(Number);
+  const start = new Date(y, m-1, 1, 0,0,0,0);
+  const end = new Date(y, m, 0, 23,59,59,999);
+  return {start, end};
+};
+
+/* RBAC helpers (disabled for testing) */
+let CURRENT_ROLE = 'employee';
+let CURRENT_USER = null;
+let CURRENT_EMPLOYEE_ID = null;
+function applyRBAC() { /* No-op to avoid hiding elements */ }
+
+/* DOM refs */
+const tabs = document.querySelectorAll('.nav-tab');
+const sections = {
+  dashboard: document.getElementById('dashboard-section'),
+  compliance: document.getElementById('compliance-section'),
+  commission: document.getElementById('commission-section'),
+  lotteries: document.getElementById('lotteries-section'),
+  payroll: document.getElementById('payroll-section'),
+  accounting: document.getElementById('accounting-section')
+};
+tabs.forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  const target = t.dataset.target.split('-')[0];
+  Object.values(sections).forEach(s => s.classList.add('hidden'));
+  if (target === 'dashboard') sections.dashboard.classList.remove('hidden');
+  if (target === 'compliance') sections.compliance.classList.remove('hidden');
+  if (target === 'commission') sections.commission.classList.remove('hidden');
+  if (target === 'lotteries') sections.lotteries.classList.remove('hidden');
+  if (target === 'payroll') sections.payroll.classList.remove('hidden');
+  if (target === 'accounting') sections.accounting.classList.remove('hidden');
+}));
+
+/* Charts */
+const salesCommissionCtx = document.getElementById('salesCommissionChart').getContext('2d');
+const roleCtx = document.getElementById('roleChart').getContext('2d');
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+let salesCommissionChart = new Chart(salesCommissionCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Sales', data: [], backgroundColor:'#3b82f6' }, { label: 'Commission', data: [], backgroundColor:'#10b981' }] },
+  options: { responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}} }
+});
+let roleChart = new Chart(roleCtx, {
+  type: 'doughnut',
+  data: { labels: ['admin','hr','manager','employee','accountant'], datasets: [{ data:[0,0,0,0,0], backgroundColor:['#111827','#6b7280','#2563eb','#10b981','#f59e0b'] }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+});
+let performanceChart = new Chart(performanceCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Performance', data: [], backgroundColor: '#ef4444' }] },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+});
+
+/* Auth UI */
+const signedOutEl = document.getElementById('signed-out'),
+      signedInEl = document.getElementById('signed-in'),
+      userInitials = document.getElementById('user-initials'),
+      userEmailEl = document.getElementById('user-email'),
+      userRoleEl = document.getElementById('user-role');
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  if (!email || !pw) return alert('Enter credentials');
+  try {
+    await auth.signInWithEmailAndPassword(email, pw);
+  } catch (e) {
+    alert(e.message);
+  }
+});
+document.getElementById('btn-signup').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  if (!email || !pw) return alert('Enter credentials');
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pw);
+    await db.collection('users').doc(cred.user.uid).set({ email, name: email.split('@')[0], role: 'employee', branch: 'Kumasi' });
+    alert('Account created. You can sign in now.');
+  } catch (e) {
+    alert(e.message);
+  }
+});
+document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
+auth.onAuthStateChanged(async user => {
+  CURRENT_USER = user || null;
+  if (user) {
+    signedOutEl.style.display = 'none';
+    signedInEl.style.display = 'flex';
+    userInitials.textContent = (user.email || '--').slice(0, 2).toUpperCase();
+    userEmailEl.textContent = user.email || '';
+    const userDoc = await db.collection('users').doc(user.uid).get();
+    const userData = userDoc.exists ? userDoc.data() : { role: 'employee', name: user.email.split('@')[0], branch: 'Kumasi' };
+    CURRENT_ROLE = userData.role || 'employee';
+    userRoleEl.textContent = CURRENT_ROLE;
+    const empQuery = await db.collection('employees').where('email', '==', user.email).limit(1).get();
+    CURRENT_EMPLOYEE_ID = !empQuery.empty ? empQuery.docs[0].id : null;
+    console.log('User logged in:', user.email, 'Role:', CURRENT_ROLE, 'Employee ID:', CURRENT_EMPLOYEE_ID);
+  } else {
+    signedOutEl.style.display = 'flex';
+    signedInEl.style.display = 'none';
+    userInitials.textContent = '--';
+    CURRENT_ROLE = 'employee';
+    CURRENT_EMPLOYEE_ID = null;
+    console.log('No user logged in');
+  }
+});
+
+/* Employees (real-time) */
+const employeesTableBody = document.getElementById('employees-table-body');
+let EMP_CACHE = {};
+db.collection('employees').orderBy('name', 'asc').onSnapshot(snapshot => {
+  const employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  EMP_CACHE = {};
+  employees.forEach(e => EMP_CACHE[e.id] = e);
+  console.log('Fetched employees:', employees);
+  renderEmployees(employees);
+  updateDashboardMetricsFromEmployees(employees);
+});
+
+function attachEmployeeEventListeners() {
+  console.log('Attaching event listeners...');
+  const editButtons = document.querySelectorAll('.btn-edit');
+  const removeButtons = document.querySelectorAll('.btn-remove');
+  console.log('Edit buttons found:', editButtons.length);
+  console.log('Remove buttons found:', removeButtons.length);
+  
+  if (editButtons.length === 0 || removeButtons.length === 0) {
+    console.error('No buttons found. Check table rendering.');
+    console.log('Table body HTML:', employeesTableBody.innerHTML);
+  }
+
+  editButtons.forEach(b => {
+    const id = b.dataset.id;
+    if (!id) {
+      console.error('No data-id on edit button:', b.outerHTML);
+      return;
+    }
+    console.log('Attaching edit listener for ID:', id);
+    b.onclick = async () => {
+      console.log('Edit clicked for ID:', id, 'User:', CURRENT_USER?.email || 'none');
+      try {
+        const doc = await db.collection('employees').doc(id).get();
+        if (!doc.exists) {
+          console.log('Employee doc not found:', id);
+          alert('Employee not found');
+          return;
+        }
+        const d = doc.data();
+        console.log('Employee data:', d);
+        const name = prompt('Name', d.name || '');
+        if (name === null) return;
+        const email = prompt('Email', d.email || '');
+        if (email === null) return;
+        const role = prompt('Role (admin/hr/manager/employee/accountant)', d.role || '');
+        if (role === null) return;
+        const branch = prompt('Branch', d.branch || '');
+        if (branch === null) return;
+        const salary = prompt('Salary', d.salary || 0);
+        if (salary === null) return;
+        const commission = prompt('Commission %', d.commission || 0);
+        if (commission === null) return;
+        const targetSales = prompt('Monthly target (₵)', d.targetSales || '');
+        if (targetSales === null) return;
+        const bonusRate = prompt('Bonus % over target', d.bonusRate || '');
+        if (bonusRate === null) return;
+        const performance = prompt('Performance', d.performance || 0);
+        if (performance === null) return;
+        const sales = prompt('Sales', d.sales || 0);
+        if (sales === null) return;
+        await db.collection('employees').doc(id).update({
+          name,
+          email,
+          role,
+          branch: branch || '',
+          salary: safeNum(salary) || 0,
+          commission: safeNum(commission) || 0,
+          targetSales: safeNum(targetSales) || 0,
+          bonusRate: safeNum(bonusRate) || 0,
+          performance: safeNum(performance) || 0,
+          sales: safeNum(sales) || 0
+        });
+        console.log('Employee updated:', id);
+        alert('Employee updated successfully');
+      } catch (e) {
+        console.error('Error updating employee:', id, e);
+        alert('Error updating employee: ' + e.message);
+      }
+    };
+  });
+
+  removeButtons.forEach(b => {
+    const id = b.dataset.id;
+    if (!id) {
+      console.error('No data-id on remove button:', b.outerHTML);
+      return;
+    }
+    console.log('Attaching remove listener for ID:', id);
+    b.onclick = async () => {
+      console.log('Remove clicked for ID:', id, 'User:', CURRENT_USER?.email || 'none');
+      if (!confirm('Remove employee?')) return;
+      try {
+        await db.collection('employees').doc(id).delete();
+        console.log('Employee deleted:', id);
+        alert('Employee deleted successfully');
+      } catch (e) {
+        console.error('Error deleting employee:', id, e);
+        alert('Error deleting employee: ' + e.message);
+      }
+    };
+  });
+}
+
+function renderEmployees(employees) {
+  console.log('Rendering employees:', employees.length);
+  employeesTableBody.innerHTML = '';
+  const currentMonth = monthKey();
+  const tableRows = employees.map(emp => {
+    if (!emp.id) {
+      console.error('Employee missing ID:', emp);
+      return '';
+    }
+    console.log('Rendering employee ID:', emp.id, 'Name:', emp.name);
+    const salesSum = safeNum(emp.sales) || 0;
+    return `
+      <tr>
+        <td class="py-2">${emp.name || ''}</td>
+        <td>${emp.email || ''}</td>
+        <td>${emp.role || ''}</td>
+        <td>${safeNum(salesSum)}</td>
+        <td>${emp.commission ? emp.commission + '%' : '-'}</td>
+        <td>${emp.targetSales ? currency(emp.targetSales) : '-'}</td>
+        <td>${emp.bonusRate ? emp.bonusRate + '%' : '-'}</td>
+        <td class="py-2">
+          <button data-id="${emp.id}" class="btn-edit text-sm text-gray-600">Edit</button>
+          <button data-id="${emp.id}" class="btn-remove text-sm text-red-600 ml-2">Remove</button>
+        </td>
+      </tr>`;
+  }).join('');
+  employeesTableBody.innerHTML = tableRows;
+  console.log('Table rows rendered:', employeesTableBody.children.length);
+  console.log('Calling attachEmployeeEventListeners after render');
+  attachEmployeeEventListeners();
+}
+
+/* Add employee */
+document.getElementById('btn-add-employee').addEventListener('click', async (ev) => {
+  ev.preventDefault();
+  const name = document.getElementById('emp-name').value.trim();
+  const email = document.getElementById('emp-email').value.trim();
+  const role = document.getElementById('emp-role').value;
+  const salary = safeNum(document.getElementById('emp-salary').value);
+  const commission = safeNum(document.getElementById('emp-commission').value);
+  const branch = document.getElementById('emp-branch').value.trim();
+  const targetSales = safeNum(document.getElementById('emp-target').value);
+  const bonusRate = safeNum(document.getElementById('emp-bonusRate').value);
+  const performance = safeNum(document.getElementById('emp-performance').value);
+  const sales = safeNum(document.getElementById('emp-sales').value);
+  if (!name || !email) return alert('Name and email required');
+  try {
+    await db.collection('employees').add({
+      name, email, role, salary, commission, branch,
+      targetSales: targetSales || 0,
+      bonusRate: bonusRate || 0,
+      performance: performance || 0,
+      sales: sales || 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('Employee added:', name, email);
+    document.getElementById('add-employee-form').reset();
+    alert('Employee added successfully');
+  } catch (e) {
+    console.error('Error adding employee:', e);
+    alert('Error adding employee: ' + e.message);
+  }
+});
+
+/* Dashboard helpers */
+const elTotalEmployees = document.getElementById('total-employees');
+const elTotalParticipants = document.getElementById('total-participants');
+const elTotalWinners = document.getElementById('total-winners');
+const elTotalCommissions = document.getElementById('total-commissions');
+const elMetricRevenue = document.getElementById('metric-revenue');
+const elMetricProfit = document.getElementById('metric-profit');
+async function updateDashboardMetricsFromEmployees(employees) {
+  elTotalEmployees.textContent = employees.length;
+  const labels = employees.map(e => e.name || e.email || e.id).slice(0, 12);
+  const salesArr = employees.slice(0, 12).map(e => safeNum(e.sales) || 0);
+  const commissions = salesArr.map((s, i) => Math.round(s * safeNum(employees[i].commission || 0) / 100));
+  const performances = employees.slice(0, 12).map(e => safeNum(e.performance) || 0);
+  salesCommissionChart.data.labels = labels;
+  salesCommissionChart.data.datasets[0].data = salesArr;
+  salesCommissionChart.data.datasets[1].data = commissions;
+  salesCommissionChart.update();
+  const roles = { admin: 0, hr: 0, manager: 0, employee: 0, accountant: 0 };
+  employees.forEach(e => roles[e.role] = (roles[e.role] || 0) + 1);
+  roleChart.data.datasets[0].data = [roles.admin || 0, roles.hr || 0, roles.manager || 0, roles.employee || 0, roles.accountant || 0];
+  roleChart.update();
+  performanceChart.data.labels = labels;
+  performanceChart.data.datasets[0].data = performances;
+  performanceChart.update();
+  const { start, end } = monthRange(monthKey());
+  const salesSnap = await db.collection('sales').where('soldAt', '>=', start).where('soldAt', '<=', end).get();
+  const revenue = salesSnap.docs.reduce((a, d) => a + safeNum(d.data().price), 0);
+  const commSnap = await db.collection('commissions').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+  const comms = commSnap.docs.reduce((a, d) => a + safeNum(d.data().amount), 0);
+  const prizeSnap = await db.collection('payouts').where('type', '==', 'prize').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+  const prizes = prizeSnap.docs.reduce((a, d) => a + safeNum(d.data().total), 0);
+  elMetricRevenue.textContent = currency(revenue);
+  elMetricProfit.textContent = currency(revenue - comms - prizes);
+}
+
+/* Lotteries */
+const lotteriesContainer = document.getElementById('lotteries-container');
+document.getElementById('show-create-lottery').addEventListener('click', () => {
+  document.getElementById('create-lottery-form').style.display = 'block';
+});
+document.getElementById('cancel-create-lottery').addEventListener('click', () => {
+  document.getElementById('create-lottery-form').style.display = 'none';
+});
+document.getElementById('create-lottery').addEventListener('click', async () => {
+  const name = document.getElementById('lottery-name').value.trim();
+  const start = document.getElementById('lottery-start').value;
+  const end = document.getElementById('lottery-end').value;
+  const prize = safeNum(document.getElementById('lottery-prize').value) || 0;
+  const ticketPrice = safeNum(document.getElementById('lottery-ticketPrice').value) || 1;
+  if (!name) return alert('Provide name');
+  try {
+    await db.collection('lotteries').add({
+      name, start, end, prize, ticketPrice, ticketCount: 0,
+      participants: [], winner: null, status: 'active',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: CURRENT_USER ? CURRENT_USER.uid : null,
+      createdByEmail: CURRENT_USER ? CURRENT_USER.email : null
+    });
+    document.getElementById('create-lottery-form').style.display = 'none';
+    document.getElementById('lottery-name').value = '';
+    document.getElementById('lottery-start').value = '';
+    document.getElementById('lottery-end').value = '';
+    document.getElementById('lottery-prize').value = '';
+    document.getElementById('lottery-ticketPrice').value = '';
+    alert('Lottery created successfully');
+  } catch (e) {
+    console.error('Error creating lottery:', e);
+    alert('Error creating lottery: ' + e.message);
+  }
+});
+
+/* Render lotteries */
+db.collection('lotteries').orderBy('createdAt', 'desc').onSnapshot(async snap => {
+  lotteriesContainer.innerHTML = '';
+  let totalParticipants = 0, totalWinners = 0;
+  const lotteries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const empSnap = await db.collection('employees').get();
+  const empMap = {};
+  empSnap.forEach(e => empMap[e.id] = e.data());
+  for (const L of lotteries) {
+    const soldSnap = await db.collection('tickets').where('lotteryId', '==', L.id).where('sold', '==', true).get();
+    totalParticipants += soldSnap.size;
+    if (L.winner) totalWinners++;
+    const item = document.createElement('div');
+    item.className = 'border rounded p-3';
+    item.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="font-medium">${L.name}</div>
+          <div class="text-xs text-gray-500">${L.start || '-'} → ${L.end || '-'} • ${L.ticketPrice || 1}₵ per ticket • Prize: ${currency(L.prize || 0)} • Status: ${L.status || 'active'}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="text-sm bg-gray-200 px-2 py-1 rounded" data-act="gen" data-id="${L.id}" ${L.status === 'closed' ? 'disabled' : ''}>Generate Tickets</button>
+          <button class="text-sm bg-gray-200 px-2 py-1 rounded" data-act="assign" data-id="${L.id}" ${L.status === 'closed' ? 'disabled' : ''}>Assign Tickets</button>
+          <button class="text-sm bg-gray-200 px-2 py-1 rounded" data-act="sell" data-id="${L.id}" ${L.status === 'closed' ? 'disabled' : ''}>Record Sale</button>
+          <button class="text-sm bg-green-600 text-white px-2 py-1 rounded" data-act="pick" data-id="${L.id}" ${L.status === 'closed' ? 'disabled' : ''}>Pick Winner</button>
+          <button class="text-sm bg-red-600 text-white px-2 py-1 rounded" data-act="close" data-id="${L.id}" ${L.status === 'closed' ? 'disabled' : ''}>Close</button>
+          <button class="text-sm bg-blue-600 text-white px-2 py-1 rounded" data-act="view" data-id="${L.id}">View</button>
+        </div>
+      </div>
+      <div class="mt-2 text-sm text-gray-700"><strong>Winner:</strong> ${L.winner ? (L.winner.customerName || L.winner.ticketNo || '-') : '-'}</div>
+    `;
+    lotteriesContainer.appendChild(item);
+  }
+  document.getElementById('total-participants').textContent = totalParticipants;
+  document.getElementById('total-winners').textContent = totalWinners;
+  lotteriesContainer.querySelectorAll('button[data-act]').forEach(btn => {
+    const act = btn.dataset.act, id = btn.dataset.id;
+    if (act === 'gen') btn.onclick = () => generateTicketsUI(id);
+    if (act === 'assign') btn.onclick = () => assignTicketsUI(id);
+    if (act === 'sell') btn.onclick = () => recordSaleUI(id);
+    if (act === 'pick') btn.onclick = () => pickWinner(id);
+    if (act === 'close') btn.onclick = async () => {
+      if (confirm('Close lottery?')) await db.collection('lotteries').doc(id).update({ status: 'closed' });
+    };
+    if (act === 'view') btn.onclick = () => viewLotteryDetails(id);
+  });
+});
+
+/* Unique ticket generator */
+function randomTicketNo(prefix = 'T') {
+  return `${prefix}-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+}
+async function generateTicketsUI(lotteryId) {
+  const countStr = prompt('How many tickets? (e.g., 100)');
+  if (!countStr) return;
+  const count = Math.max(1, safeNum(countStr));
+  const lot = await db.collection('lotteries').doc(lotteryId).get();
+  if (!lot.exists) return alert('Lottery not found');
+  if (lot.data().status === 'closed') return alert('Lottery is closed');
+  const ticketPrice = lot.data().ticketPrice || 1;
+  const batch = db.batch();
+  for (let i = 0; i < count; i++) {
+    const id = db.collection('tickets').doc().id;
+    const ref = db.collection('tickets').doc(id);
+    batch.set(ref, {
+      lotteryId, ticketNo: randomTicketNo('TK'),
+      price: ticketPrice, assignedTo: null, sold: false, customerName: null, customerPhone: null, agentId: null, soldAt: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: CURRENT_USER ? CURRENT_USER.uid : null
+    });
+  }
+  batch.update(db.collection('lotteries').doc(lotteryId), { ticketCount: firebase.firestore.FieldValue.increment(count) });
+  await batch.commit();
+  alert(`Generated ${count} tickets`);
+}
+async function assignTicketsUI(lotteryId) {
+  const lot = await db.collection('lotteries').doc(lotteryId).get();
+  if (lot.data().status === 'closed') return alert('Lottery is closed');
+  const empInput = prompt('Assign to which agent? (email or employeeId)');
+  if (!empInput) return;
+  const qtyStr = prompt('How many tickets to assign?');
+  if (!qtyStr) return;
+  const qty = Math.max(1, safeNum(qtyStr));
+  const empSnap = await db.collection('employees').get();
+  const emp = empSnap.docs.map(d => ({ id: d.id, ...d.data() })).find(e => e.email === empInput || e.id === empInput);
+  if (!emp) return alert('Employee not found');
+  const freeSnap = await db.collection('tickets').where('lotteryId', '==', lotteryId).where('assignedTo', '==', null).limit(qty).get();
+  if (freeSnap.size < qty) return alert(`Only ${freeSnap.size} tickets unassigned`);
+  const batch = db.batch();
+  freeSnap.docs.forEach(d => batch.update(d.ref, { assignedTo: emp.id, assignedBy: CURRENT_USER ? CURRENT_USER.uid : null, assignedAt: new Date() }));
+  await batch.commit();
+  alert(`Assigned ${qty} tickets to ${emp.name || emp.email}`);
+}
+async function recordSaleUI(lotteryId) {
+  const lot = await db.collection('lotteries').doc(lotteryId).get();
+  if (lot.data().status === 'closed') return alert('Lottery is closed');
+  const ticketNo = prompt('Ticket number (exact)');
+  if (!ticketNo) return;
+  const custName = prompt('Customer name');
+  const custPhone = prompt('Customer phone (optional)') || '';
+  const tSnap = await db.collection('tickets').where('lotteryId', '==', lotteryId).where('ticketNo', '==', ticketNo).limit(1).get();
+  if (tSnap.empty) return alert('Ticket not found');
+  const tDoc = tSnap.docs[0];
+  const t = tDoc.data();
+  if (t.sold) return alert('Ticket already sold');
+  if (CURRENT_ROLE === 'employee' && CURRENT_EMPLOYEE_ID && t.assignedTo && t.assignedTo !== CURRENT_EMPLOYEE_ID) {
+    return alert('You can only record sales for tickets assigned to you.');
+  }
+  await tDoc.ref.update({ sold: true, customerName: custName, customerPhone: custPhone, agentId: t.assignedTo, soldAt: new Date(), soldBy: CURRENT_USER ? CURRENT_USER.uid : null });
+  await db.collection('sales').add({
+    lotteryId, ticketNo, price: t.price, agentId: t.assignedTo, customerName: custName, customerPhone: custPhone, soldAt: new Date(),
+    createdBy: CURRENT_USER ? CURRENT_USER.uid : null
+  });
+  if (t.assignedTo) {
+    const emp = EMP_CACHE[t.assignedTo] || (await db.collection('employees').doc(t.assignedTo).get()).data() || {};
+    let pct = safeNum(emp.commission) || 0;
+    if (pct === 0) {
+      const ruleSnap = await db.collection('rules').where('ruleName', '==', 'Default Commission').where('status', '==', 'active').limit(1).get();
+      if (!ruleSnap.empty) {
+        pct = safeNum(ruleSnap.docs[0].data().percentage) || 0;
+      } else {
+        alert('No active default commission rule found. Commission set to 0.');
+        pct = 0;
+      }
+    }
+    const commissionAmount = (pct / 100) * safeNum(t.price);
+    await db.collection('commissions').add({
+      employeeId: t.assignedTo, name: emp.name || emp.email || t.assignedTo,
+      amount: commissionAmount, source: `Ticket ${ticketNo}`, createdAt: new Date(),
+      createdBy: CURRENT_USER ? CURRENT_USER.uid : null
+    });
+  }
+  alert('Sale recorded');
+}
+async function viewLotteryDetails(lotteryId) {
+  const d = await db.collection('lotteries').doc(lotteryId).get();
+  if (!d.exists) return alert('Lottery not found');
+  const L = d.data();
+  const ticketsSnap = await db.collection('tickets').where('lotteryId', '==', lotteryId).get();
+  const totalTickets = ticketsSnap.size;
+  const soldDocs = ticketsSnap.docs.filter(x => x.data().sold);
+  const soldCount = soldDocs.length;
+  const revenue = soldDocs.reduce((a, d) => a + safeNum(d.data().price), 0);
+  const participants = soldDocs.map((x, i) => ({ idx: i + 1, ...x.data() }));
+  const rows = participants.length
+    ? participants.slice(0, 200).map(p => `
+      <tr class="border-b"><td class="px-4 py-2">${p.idx}</td><td class="px-4 py-2">${p.ticketNo}</td><td class="px-4 py-2">${p.customerName || '—'}</td><td class="px-4 py-2">${p.agentId || '—'}</td></tr>
+    `).join('')
+    : `<tr><td colspan="4" class="px-4 py-2 text-center">No sales yet</td></tr>`;
+  const modalHtml = `
+    <div id="lotteryModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-2xl w-full max-w-3xl shadow-lg">
+        <h2 class="text-xl font-bold mb-4">${L.name || 'Lottery'} Details</h2>
+        <p><strong>Ticket Price:</strong> ${currency(L.ticketPrice || 0)}</p>
+        <p><strong>Prize:</strong> ${currency(L.prize || 0)}</p>
+        <p><strong>Total Tickets:</strong> ${totalTickets} • <strong>Sold:</strong> ${soldCount} • <strong>Revenue:</strong> ${currency(revenue)}</p>
+        <p><strong>Winner:</strong> ${L.winner ? (L.winner.customerName ? L.winner.customerName + ' — ' + L.winner.ticketNo : L.winner.ticketNo) : 'Not yet drawn'}</p>
+        <h3 class="text-lg font-semibold mt-4 mb-2">Sold Tickets (first 200)</h3>
+        <div class="overflow-x-auto max-h-60 overflow-y-auto border rounded-lg">
+          <table class="min-w-full text-sm text-left">
+            <thead class="bg-gray-100 sticky top-0">
+              <tr>
+                <th class="px-4 py-2">#</th>
+                <th class="px-4 py-2">Ticket</th>
+                <th class="px-4 py-2">Customer</th>
+                <th class="px-4 py-2">Agent</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="flex justify-end mt-4">
+          <button onclick="document.getElementById('lotteryModal').remove()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+async function pickWinner(lotteryId) {
+  const docRef = db.collection('lotteries').doc(lotteryId);
+  const snap = await docRef.get();
+  if (!snap.exists) return alert('Lottery not found');
+  const L = snap.data();
+  if (L.status === 'closed') return alert('Lottery is closed');
+  const soldSnap = await db.collection('tickets').where('lotteryId', '==', lotteryId).where('sold', '==', true).get();
+  const sold = soldSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (!sold.length) return alert('No sold tickets to draw from');
+  const winner = sold[Math.floor(Math.random() * sold.length)];
+  await docRef.update({
+    winner: { ticketNo: winner.ticketNo, customerName: winner.customerName || null, agentId: winner.agentId || null },
+    pickedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    pickedBy: CURRENT_USER ? CURRENT_USER.uid : null
+  });
+  await db.collection('payouts').add({
+    type: 'prize',
+    employeeId: winner.agentId || null,
+    name: winner.customerName || 'Prize Winner',
+    role: 'n/a',
+    base: 0, commission: 0, total: safeNum(L.prize || 0),
+    sourceLottery: L.name || lotteryId,
+    status: 'pending',
+    createdAt: new Date(),
+    createdBy: CURRENT_USER ? CURRENT_USER.uid : null
+  });
+  alert(`Winner picked: ${winner.customerName || winner.ticketNo}`);
+}
+
+/* Commissions & payouts rendering */
+const commissionsBody = document.getElementById('commissions-body');
+const payoutsBody = document.getElementById('payouts-body');
+db.collection('commissions').orderBy('createdAt', 'desc').limit(50).onSnapshot(snap => {
+  commissionsBody.innerHTML = '';
+  let total = 0;
+  snap.forEach(d => {
+    const c = d.data();
+    total += safeNum(c.amount);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="py-2">${c.name || c.employeeId}</td><td>${currency(c.amount)}</td><td class="text-sm text-gray-500">${c.source || ''}</td>`;
+    commissionsBody.appendChild(tr);
+  });
+  elTotalCommissions.textContent = currency(total);
+});
+db.collection('payouts').orderBy('createdAt', 'desc').limit(100).onSnapshot(snap => {
+  payoutsBody.innerHTML = '';
+  let payoutsArr = [];
+  snap.forEach(d => {
+    const p = d.data();
+    const statusClass = p.status === 'complete' ? 'status-complete' : p.status === 'winner' || p.type === 'prize' ? 'status-good' : 'status-mid';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="py-2">${p.name || p.employeeId}</td>
+      <td>${currency(p.total)}</td>
+      <td><span class="${statusClass} status-badge">${p.status || 'pending'}</span></td>
+      <td>
+        ${p.status !== 'complete' ? `<button data-id="${d.id}" class="finalize-payout text-sm text-green-600">Finalize</button>` : ''}
+      </td>`;
+    payoutsBody.appendChild(tr);
+    payoutsArr.push({ id: d.id, ...p });
+  });
+  const engineBody = document.getElementById('engine-payouts-body');
+  if (engineBody) {
+    engineBody.innerHTML = '';
+    payoutsArr.slice(0, 100).forEach(p => {
+      const statusClass = p.status === 'complete' ? 'status-complete' : p.status === 'winner' || p.type === 'prize' ? 'status-good' : 'status-mid';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="py-2">${p.name}</td>
+        <td>${currency(p.commission || 0)}</td>
+        <td>${currency(p.total || 0)}</td>
+        <td><span class="${statusClass} status-badge">${p.status || 'pending'}</span></td>
+        <td>
+          ${p.status !== 'complete' ? `<button data-id="${p.id}" class="finalize-payout text-sm text-green-600">Finalize</button>` : ''}
+        </td>`;
+      engineBody.appendChild(tr);
+    });
+  }
+  document.querySelectorAll('.finalize-payout').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      if (!confirm('Mark payout as complete?')) return;
+      try {
+        await db.collection('payouts').doc(id).update({
+          status: 'complete',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: CURRENT_USER ? CURRENT_USER.uid : null
+        });
+        alert('Payout marked as complete');
+      } catch (e) {
+        alert('Error finalizing payout: ' + e.message);
+      }
+    };
+  });
+});
+
+/* Commission Rules CRUD (engine) */
+const rulesList = document.getElementById('rules-list');
+db.collection('rules').orderBy('ruleName', 'asc').onSnapshot(snap => {
+  rulesList.innerHTML = '';
+  snap.forEach(doc => {
+    const r = doc.data();
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between p-2 border rounded';
+    div.innerHTML = `
+      <div>
+        <div class="font-medium">${r.ruleName}</div>
+        <div class="text-xs text-gray-500">${r.percentage ? r.percentage + '%' : ''} ${r.description || ''}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="px-2 py-1 border rounded toggle-rule" data-id="${doc.id}">${r.status === 'active' ? 'Active' : 'Inactive'}</button>
+        <button class="px-2 py-1 border rounded edit-rule" data-id="${doc.id}">Edit</button>
+        <button class="px-2 py-1 border rounded text-red-600 delete-rule" data-id="${doc.id}">Delete</button>
+      </div>`;
+    rulesList.appendChild(div);
+  });
+  document.querySelectorAll('.toggle-rule').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      const doc = await db.collection('rules').doc(id).get();
+      const next = (doc.data().status === 'active') ? 'inactive' : 'active';
+      await db.collection('rules').doc(id).update({ status: next });
+    };
+  });
+  document.querySelectorAll('.edit-rule').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      const doc = await db.collection('rules').doc(id).get();
+      if (!doc.exists) return;
+      const r = doc.data();
+      const ruleName = prompt('Rule name', r.ruleName || '');
+      if (ruleName === null) return;
+      const pct = prompt('Percentage (number)', r.percentage || 0);
+      if (pct === null) return;
+      const desc = prompt('Description', r.description || '');
+      await db.collection('rules').doc(id).update({ ruleName, percentage: safeNum(pct), description: desc });
+    };
+  });
+  document.querySelectorAll('.delete-rule').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      if (!confirm('Delete rule?')) return;
+      await db.collection('rules').doc(id).delete();
+    };
+  });
+});
+document.getElementById('btn-new-rule').addEventListener('click', async () => {
+  const name = prompt('Rule name (e.g., "Default Commission")');
+  if (!name) return;
+  const pct = prompt('Percentage (e.g., 10)');
+  if (pct === null) return;
+  const desc = prompt('Description (optional)');
+  await db.collection('rules').add({ ruleName: name, percentage: safeNum(pct), description: desc || '', status: 'active', createdAt: new Date(), createdBy: CURRENT_USER ? CURRENT_USER.uid : null });
+});
+
+/* Compliance */
+const complianceItemsBody = document.getElementById('compliance-items-body');
+const complianceDeadlines = document.getElementById('compliance-deadlines');
+const complianceAlertsEl = document.getElementById('compliance-alerts');
+db.collection('compliance').orderBy('deadline', 'asc').onSnapshot(snap => {
+  complianceItemsBody.innerHTML = '';
+  let deadlinesArr = [], alertsArr = [];
+  snap.forEach(doc => {
+    const c = doc.data();
+    const statusClass = c.status === 'Complete' ? 'status-good' : c.status === 'Pending' ? 'status-mid' : 'status-bad';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="py-2">${c.employeeName || c.employeeId || ''}</td>
+      <td>${c.requirement || ''}</td>
+      <td>${c.deadline || ''}</td>
+      <td><span class="${statusClass} status-badge">${c.status || ''}</span></td>
+      <td>
+        <button data-id="${doc.id}" class="edit-comp text-sm border px-2 py-1 rounded">Edit</button>
+        <button data-id="${doc.id}" class="del-comp text-sm border px-2 py-1 rounded text-red-600">Delete</button>
+        ${c.status !== 'Complete' ? `<button data-id="${doc.id}" class="mark-complete-comp text-sm text-green-600 ml-2">Mark Complete</button>` : ''}
+      </td>`;
+    complianceItemsBody.appendChild(tr);
+    deadlinesArr.push({ title: c.requirement, date: c.deadline, scope: c.employeeName || c.employeeId });
+    if (c.status === 'Overdue' || c.status === 'Pending') alertsArr.push({ title: c.requirement, message: `${c.employeeName || c.employeeId} - ${c.status}`, when: c.deadline, level: c.status === 'Overdue' ? 'error' : 'warn' });
+  });
+  document.querySelectorAll('.edit-comp').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      const doc = await db.collection('compliance').doc(id).get();
+      if (!doc.exists) return;
+      const data = doc.data();
+      const newStatus = prompt('Status (Complete / Pending / Overdue)', data.status || 'Pending');
+      if (newStatus === null) return;
+      await db.collection('compliance').doc(id).update({ status: newStatus, updatedBy: CURRENT_USER ? CURRENT_USER.uid : null });
+    };
+  });
+  document.querySelectorAll('.del-comp').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      if (!confirm('Delete compliance item?')) return;
+      await db.collection('compliance').doc(id).delete();
+    };
+  });
+  document.querySelectorAll('.mark-complete-comp').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      if (!confirm('Mark as complete?')) return;
+      await db.collection('compliance').doc(id).update({ status: 'Complete', updatedBy: CURRENT_USER ? CURRENT_USER.uid : null });
+    };
+  });
+  complianceDeadlines.innerHTML = '';
+  deadlinesArr.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'py-2 border-b';
+    el.innerHTML = `<div class="font-medium">${d.title}</div><div class="text-xs text-gray-500">${d.scope} • ${d.date}</div>`;
+    complianceDeadlines.appendChild(el);
+  });
+  complianceAlertsEl.innerHTML = '';
+  alertsArr.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'py-2 border-b';
+    el.innerHTML = `<div class="font-medium">${a.title}</div><div class="text-sm">${a.message}</div><div class="text-xs text-gray-500">${a.when}</div>`;
+    complianceAlertsEl.appendChild(el);
+  });
+});
+document.getElementById('btn-add-compliance').addEventListener('click', async () => {
+  const employee = prompt('Employee name or id');
+  if (!employee) return;
+  const requirement = prompt('Requirement (e.g., KYC renewal)');
+  if (!requirement) return;
+  const deadline = prompt('Deadline (YYYY-MM-DD)');
+  if (!deadline) return;
+  await db.collection('compliance').add({ employeeName: employee, requirement, deadline, status: 'Pending', createdAt: new Date(), createdBy: CURRENT_USER ? CURRENT_USER.uid : null });
+});
+
+/* Employee Compliance Tasks */
+const employeeComplianceBody = document.getElementById('employee-compliance-body');
+db.collection('compliance').where('status', 'in', ['Pending', 'Overdue']).onSnapshot(snap => {
+  employeeComplianceBody.innerHTML = '';
+  if (!CURRENT_EMPLOYEE_ID) return;
+  snap.forEach(doc => {
+    const c = doc.data();
+    if (c.employeeId !== CURRENT_EMPLOYEE_ID && c.employeeName !== (EMP_CACHE[CURRENT_EMPLOYEE_ID]?.name || CURRENT_USER?.email)) return;
+    const statusClass = c.status === 'Pending' ? 'status-mid' : 'status-bad';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="py-2">${c.requirement || ''}</td>
+      <td>${c.deadline || ''}</td>
+      <td><span class="${statusClass} status-badge">${c.status || 'Pending'}</span></td>
+      <td>
+        <button data-id="${doc.id}" class="submit-comp text-sm text-blue-600">Submit</button>
+      </td>`;
+    employeeComplianceBody.appendChild(tr);
+  });
+  document.querySelectorAll('.submit-comp').forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.id;
+      const response = prompt('Enter your compliance submission (e.g., document details or acknowledgment)');
+      if (!response) return;
+      await db.collection('complianceSubmissions').add({
+        complianceId: id,
+        employeeId: CURRENT_EMPLOYEE_ID,
+        employeeName: EMP_CACHE[CURRENT_EMPLOYEE_ID]?.name || CURRENT_USER?.email,
+        response,
+        submittedAt: new Date(),
+        submittedBy: CURRENT_USER ? CURRENT_USER.uid : null
+      });
+      alert('Compliance submission recorded');
+    };
+  });
+});
+
+/* Payroll */
+const payrollBody = document.getElementById('payroll-body');
+let LAST_PAYROLL_ROWS = [];
+document.getElementById('btn-generate-payroll').addEventListener('click', async () => {
+  const ym = document.getElementById('payroll-month').value || monthKey();
+  const { start, end } = monthRange(ym);
+  const employeesSnap = await db.collection('employees').get();
+  const employees = employeesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  payrollBody.innerHTML = '';
+  LAST_PAYROLL_ROWS = [];
+  for (const e of employees) {
+    const salesSnap = await db.collection('sales')
+      .where('agentId', '==', e.id)
+      .where('soldAt', '>=', start)
+      .where('soldAt', '<=', end)
+      .get();
+    const sales = salesSnap.docs.reduce((a, d) => a + safeNum(d.data().price), 0);
+    const commission = sales * (safeNum(e.commission || 0) / 100);
+    const over = Math.max(0, sales - safeNum(e.targetSales || 0));
+    const bonus = over * (safeNum(e.bonusRate || 0) / 100);
+    const total = safeNum(e.salary) + commission + bonus;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="py-2">${e.name || e.email}</td>
+      <td>${currency(e.salary || 0)}</td>
+      <td>${currency(sales)}</td>
+      <td>${currency(commission)}</td>
+      <td>${currency(bonus)}</td>
+      <td>${currency(total)}</td>`;
+    payrollBody.appendChild(tr);
+    LAST_PAYROLL_ROWS.push({
+      employeeId: e.id, name: e.name || e.email || e.id, role: e.role || 'employee',
+      base: safeNum(e.salary) || 0, sales, commission, bonus, total,
+      month: ym
+    });
+  }
+});
+document.getElementById('btn-save-payroll').addEventListener('click', async () => {
+  if (!LAST_PAYROLL_ROWS.length) return alert('Generate payroll first');
+  const batch = db.batch();
+  LAST_PAYROLL_ROWS.forEach(row => {
+    const ref = db.collection('payouts').doc();
+    batch.set(ref, {
+      type: 'payroll',
+      employeeId: row.employeeId, name: row.name, role: row.role,
+      base: row.base, commission: row.commission + row.bonus, total: row.total,
+      month: row.month, status: 'pending', createdAt: new Date(), createdBy: CURRENT_USER ? CURRENT_USER.uid : null
+    });
+  });
+  await batch.commit();
+  alert('Payroll saved to payouts');
+});
+
+/* Accounting */
+const acctBreakdown = document.getElementById('acct-breakdown');
+document.getElementById('btn-refresh-acct').addEventListener('click', () => refreshAccounting());
+async function refreshAccounting() {
+  const ym = document.getElementById('acct-month').value || monthKey();
+  const { start, end } = monthRange(ym);
+  const salesSnap = await db.collection('sales').where('soldAt', '>=', start).where('soldAt', '<=', end).get();
+  const revenue = salesSnap.docs.reduce((a, d) => a + safeNum(d.data().price), 0);
+  const commSnap = await db.collection('commissions').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+  const commissions = commSnap.docs.reduce((a, d) => a + safeNum(d.data().amount), 0);
+  const prizeSnap = await db.collection('payouts').where('type', '==', 'prize').where('createdAt', '>=', start).where('createdAt', '<=', end).get();
+  const prizes = prizeSnap.docs.reduce((a, d) => a + safeNum(d.data().total), 0);
+  const profit = revenue - commissions - prizes;
+  document.getElementById('acct-revenue').textContent = currency(revenue);
+  document.getElementById('acct-comm').textContent = currency(commissions);
+  document.getElementById('acct-prizes').textContent = currency(prizes);
+  document.getElementById('acct-profit').textContent = currency(profit);
+  acctBreakdown.innerHTML = '';
+  salesSnap.docs.slice(0, 150).forEach(d => {
+    const s = d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Sale</td><td>${s.ticketNo}</td><td>${safeNum(s.price)}</td><td>${new Date(s.soldAt.seconds ? s.soldAt.seconds * 1000 : s.soldAt).toLocaleString()}</td>`;
+    acctBreakdown.appendChild(tr);
+  });
+  prizeSnap.docs.slice(0, 150).forEach(d => {
+    const p = d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Prize</td><td>${p.sourceLottery || ''}</td><td>-${safeNum(p.total)}</td><td>${new Date(p.createdAt.seconds ? p.createdAt.seconds * 1000 : p.createdAt).toLocaleString()}</td>`;
+    acctBreakdown.appendChild(tr);
+  });
+  commSnap.docs.slice(0, 150).forEach(d => {
+    const c = d.data();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>Commission</td><td>${c.name || c.employeeId}</td><td>-${safeNum(c.amount)}</td><td>${new Date(c.createdAt.seconds ? c.createdAt.seconds * 1000 : c.createdAt).toLocaleString()}</td>`;
+    acctBreakdown.appendChild(tr);
+  });
+}
+document.getElementById('acct-month').value = monthKey();
+document.getElementById('payroll-month').value = monthKey();
+
+/* Seed sample if empty */
+db.collection('employees').limit(1).get().then(s => {
+  if (s.empty) {
+    db.collection('employees').add({
+      name: 'Emmanuel Appiah', email: 'emmanuel@gmail.com', role: 'employee', salary: 100, commission: 5,
+      branch: 'Kumasi', sales: 1000, performance: 10, targetSales: 1000, bonusRate: 10,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    db.collection('employees').add({
+      name: 'Curious Cat', email: 'thecuriousscat@gmail.com', role: 'hr', salary: 5000, commission: 5,
+      branch: 'Kumasi', sales: 50, performance: 92, targetSales: 4000, bonusRate: 10,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    db.collection('users').add({
+      name: 'Curious Cat', email: 'thecuriousscat@gmail.com', role: 'hr', branch: 'Kumasi'
+    });
+    db.collection('rules').add({ ruleName: 'Default Commission', percentage: 5, description: 'Fallback commission if employee has none', status: 'active' });
+  }
+});
+
+/* End of app */
+</script>
+</body>
+</html>

@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LotteryCorp HRMS — Full Dashboard (Firestore)</title>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Firebase compat libs (auth + firestore) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root { --card-bg: #fff; --muted: #6b7280; }
+body{background:#f8fafc}
+.avatar{width:36px;height:36px;border-radius:999px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151}
+.status-badge{padding:.25rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600}
+.status-good{background:#dcfce7;color:#166534}
+.status-mid{background:#fef3c7;color:#92400e}
+.status-bad{background:#fee2e2;color:#991b1b}
+.status-complete{background:#d1fae5;color:#065f46}
+.card { background: var(--card-bg); border-radius: .75rem; padding: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.05); }
+.nav-tab { cursor:pointer; padding:0.75rem 1rem; font-weight:600; color:var(--muted); }
+.nav-tab.active { color:#1e40af; border-bottom:3px solid #1e40af; }
+.chart-container{height:260px}
+table td, table th { vertical-align: middle; }
+.input{border:1px solid #e5e7eb;border-radius:.5rem;padding:.5rem .75rem}
+.btn{border-radius:.5rem;padding:.5rem .75rem}
+.hidden-by-role{display:none!important}
+</style>
+</head>
+<body class="min-h-screen">
+<!-- ... existing header and main content remains the same ... -->
+<header class="bg-white shadow">
+  <div class="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-700 text-white p-2 rounded-lg"><i class="fas fa-ticket-alt"></i></div>
+      <h1 class="text-xl font-bold text-gray-800">LotteryCorp HRMS</h1>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="auth-area" class="flex items-center gap-3">
+        <div id="signed-out" class="flex items-center gap-2">
+          <input id="login-email" placeholder="email" class="border rounded px-2 py-1 text-sm" />
+          <input id="login-password" placeholder="password" type="password" class="border rounded px-2 py-1 text-sm" />
+          <button id="btn-login" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Sign in</button>
+          <button id="btn-signup" class="bg-gray-200 text-gray-800 px-2 py-1 rounded text-sm">Sign up</button>
+        </div>
+        <div id="signed-in" class="flex items-center gap-3" style="display:none;">
+          <div class="flex items-center gap-2">
+            <div id="user-initials" class="avatar">--</div>
+            <div>
+              <div id="user-email" class="text-sm font-medium text-gray-700">user@example.com</div>
+              <div id="user-role" class="text-xs text-gray-500">role</div>
+            </div>
+            <button id="btn-logout" class="ml-3 text-sm text-red-600 hover:underline">Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Top tabs -->
+  <div class="border-t">
+    <div class="max-w-7xl mx-auto flex px-6 overflow-x-auto">
+      <div id="tab-dashboard" class="nav-tab active" data-target="dashboard-section">Dashboard</div>
+      <div id="tab-compliance" class="nav-tab" data-target="compliance-section">Compliance</div>
+      <div id="tab-commission" class="nav-tab" data-target="commission-section">Commission Engine</div>
+      <div id="tab-lotteries" class="nav-tab" data-target="lotteries-section">Lotteries</div>
+      <div id="tab-payroll" class="nav-tab" data-target="payroll-section">Payroll</div>
+      <div id="tab-accounting" class="nav-tab ml-auto" data-target="accounting-section">Accounting</div>
+    </div>
+  </div>
+</header>
+<!-- Main content -->
+<main class="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+  <!-- Dashboard / main area (spans 3 columns) -->
+  <section id="dashboard-section" class="lg:col-span-3">
+    <!-- Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+      <div class="card">
+        <p class="text-sm text-gray-500">Total Employees</p>
+        <p id="total-employees" class="text-2xl font-bold">0</p>
+      </div>
+      <div class="card">
+        <p class="text-sm text-gray-500">Active Participants</p>
+        <p id="total-participants" class="text-2xl font-bold">0</p>
+      </div>
+      <div class="card">
+        <p class="text-sm text-gray-500">Total Winners</p>
+        <p id="total-winners" class="text-2xl font-bold">0</p>
+      </div>
+      <div class="card">
+        <p class="text-sm text-gray-500">Total Commissions (₵)</p>
+        <p id="total-commissions" class="text-2xl font-bold">₵0</p>
+      </div>
+      <div class="card">
+        <p class="text-sm text-gray-500">Revenue (₵ — this month)</p>
+        <p id="metric-revenue" class="text-2xl font-bold">₵0</p>
+      </div>
+      <div class="card">
+        <p class="text-sm text-gray-500">Profit (₵ — this month)</p>
+        <p id="metric-profit" class="text-2xl font-bold">₵0</p>
+      </div>
+    </div>
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div class="card lg:col-span-2">
+        <p class="font-semibold mb-2">Sales / Commission by Employee</p>
+        <div class="chart-container"><canvas id="salesCommissionChart"></canvas></div>
+      </div>
+      <div class="card">
+        <p class="font-semibold mb-2">Role Distribution</p>
+        <div class="chart-container"><canvas id="roleChart"></canvas></div>
+      </div>
+      <div class="card">
+        <p class="font-semibold mb-2">Employee Performance</p>
+        <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+      </div>
+    </div>
+    <!-- Employee table -->
+    <div class="card mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <div><p class="font-semibold">Employees</p><p class="text-sm text-gray-500">Add / remove employees</p></div>
+      </div>
+      <form id="add-employee-form" class="grid grid-cols-1 md:grid-cols-6 gap-2 mb-4">
+        <input id="emp-name" placeholder="Full name" class="border p-2 rounded" required />
+        <input id="emp-email" placeholder="Email" type="email" class="border p-2 rounded" required />
+        <select id="emp-role" class="border p-2 rounded">
+          <option value="employee">Employee</option>
+          <option value="manager">Manager</option>
+          <option value="hr">HR</option>
+          <option value="accountant">Accountant</option>
+          <option value="admin">Admin</option>
+        </select>
+        <input id="emp-salary" placeholder="Salary (₵)" type="number" class="border p-2 rounded" />
+        <input id="emp-commission" placeholder="Commission % (optional)" type="number" class="border p-2 rounded" />
+        <input id="emp-branch" placeholder="Branch" class="border p-2 rounded" />
+        <input id="emp-target" placeholder="Monthly target (₵, optional)" type="number" class="border p-2 rounded md:col-span-2" />
+        <input id="emp-bonusRate" placeholder="Bonus % over target (optional)" type="number" class="border p-2 rounded" />
+        <input id="emp-performance" placeholder="Performance (optional)" type="number" class="border p-2 rounded" />
+        <input id="emp-sales" placeholder="Sales (optional)" type="number" class="border p-2 rounded" />
+        <div class="md:col-span-1">
+          <button id="btn-add-employee" class="bg-blue-600 text-white px-3 py-1 rounded w-full">Add</button>
+        </div>
+      </form>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead><tr><th class="py-2">Name</th><th>Email</th><th>Role</th><th>Sales (this mo.)</th><th>Comm %</th><th>Target</th><th>Bonus %</th><th>Actions</th></tr></thead>
+          <tbody id="employees-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <!-- Right sidebar (commissions + payouts) -->
+  <aside class="space-y-6">
+    <div class="card">
+      <p class="font-semibold mb-2">Commissions (recent)</p>
+      <div class="overflow-y-auto" style="max-height:260px">
+        <table class="w-full text-left">
+          <thead><tr><th class="py-2">Employee</th><th>Amount</th><th>Source</th></tr></thead>
+          <tbody id="commissions-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <p class="font-semibold mb-2">Payouts (recent)</p>
+      <div class="overflow-y-auto" style="max-height:260px">
+        <table class="w-full text-left">
+          <thead><tr><th class="py-2">Employee</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="payouts-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </aside>
+  <!-- Compliance Section -->
+  <section id="compliance-section" class="hidden lg:col-span-3">
+    <div class="card mb-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="font-semibold">Compliance Management</p>
+          <p class="text-sm text-gray-500">Track items, deadlines & alerts</p>
+        </div>
+        <div>
+          <button id="btn-add-compliance" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Add Item</button>
+        </div>
+      </div>
+    </div>
+    <div class="card mb-4">
+      <table class="w-full text-left">
+        <thead><tr><th>Employee</th><th>Requirement</th><th>Deadline</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="compliance-items-body"></tbody>
+      </table>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card">
+        <p class="font-semibold">Upcoming Deadlines</p>
+        <div id="compliance-deadlines" class="mt-3 space-y-2"></div>
+      </div>
+      <div class="card">
+        <p class="font-semibold">Compliance Alerts</p>
+        <div id="compliance-alerts" class="mt-3 space-y-2"></div>
+      </div>
+    </div>
+  </section>
+  <!-- Commission Engine Section -->
+  <section id="commission-section" class="hidden lg:col-span-3">
+    <div class="card mb-4 flex items-center justify-between">
+      <div>
+        <p class="font-semibold">Commission Engine</p>
+        <p class="text-sm text-gray-500">Manage rules and compute payouts</p>
+      </div>
+      <div>
+        <button id="btn-new-rule" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Rule</button>
+      </div>
+    </div>
+    <div class="card mb-4">
+      <p class="font-semibold mb-2">Rules</p>
+      <div id="rules-list" class="space-y-2"></div>
+    </div>
+    <div class="card mb-4">
+      <p class="font-semibold mb-2">Payouts</p>
+      <div class="overflow-y-auto" style="max-height:300px">
+        <table class="w-full text-left">
+          <thead><tr><th>Employee</th><th>Commission</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="engine-payouts-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <!-- Lotteries Section -->
+  <section id="lotteries-section" class="hidden lg:col-span-3">
+    <div class="card mb-4 flex items-center justify-between">
+      <div>
+        <p class="font-semibold">Lotteries</p>
+        <p class="text-sm text-gray-500">Create lotteries, manage tickets & draw winners</p>
+      </div>
+      <div>
+        <button id="show-create-lottery" class="bg-green-600 text-white px-3 py-1 rounded text-sm">New Lottery</button>
+      </div>
+    </div>
+    <div id="create-lottery-form" class="card mb-4" style="display:none">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
+        <input id="lottery-name" placeholder="Lottery name" class="input" />
+        <input id="lottery-start" type="date" class="input" />
+        <input id="lottery-end" type="date" class="input" />
+        <input id="lottery-prize" type="number" placeholder="Prize (₵)" class="input" />
+        <input id="lottery-ticketPrice" type="number" placeholder="Ticket price (₵)" class="input" />
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="create-lottery" class="bg-blue-600 text-white px-3 py-1 rounded">Create</button>
+        <button id="cancel-create-lottery" class="bg-gray-200 px-3 py-1 rounded">Cancel</button>
+      </div>
+    </div>
+    <div id="lotteries-container" class="space-y-3"></div>
+    <!-- Employee Compliance Tasks -->
+    <div class="card mb-4">
+      <p class="font-semibold mb-2">My Compliance Tasks</p>
+      <p class="text-sm text-gray-500 mb-2">View and submit required compliance documents</p>
+      <div class="overflow-y-auto" style="max-height:300px">
+        <table class="w-full text-left">
+          <thead><tr><th class="py-2">Requirement</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="employee-compliance-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <!-- Payroll Section -->
+  <section id="payroll-section" class="hidden lg:col-span-3">
+    <div class="card mb-4 flex items-center justify-between">
+      <div>
+        <p class="font-semibold">Payroll</p>
+        <p class="text-sm text-gray-500">Auto-generate monthly payroll from sales & bonuses</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="payroll-month" class="input" type="month"/>
+        <button id="btn-generate-payroll" class="bg-blue-600 text-white btn">Compute</button>
+        <button id="btn-save-payroll" class="bg-green-600 text-white btn">Save to Payouts</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+          <tr>
+            <th>Employee</th><th>Base</th><th>Sales (₵)</th><th>Commission (₵)</th><th>Bonus (₵)</th><th>Total (₵)</th>
+          </tr>
+          </thead>
+          <tbody id="payroll-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  <!-- Accounting Section -->
+  <section id="accounting-section" class="hidden lg:col-span-3">
+    <div class="card mb-4 flex items-center justify-between">
+      <div>
+        <p class="font-semibold">Accounting</p>
+        <p class="text-sm text-gray-500">Revenue, prize payouts, commissions & profit</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="acct-month" class="input" type="month"/>
+        <button id="btn-refresh-acct" class="bg-blue-600 text-white btn">Refresh</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div class="card"><p class="text-sm text-gray-500">Revenue (₵)</p><p id="acct-revenue" class="text-2xl font-bold">₵0</p></div>
+      <div class="card"><p class="text-sm text-gray-500">Prize Payouts (₵)</p><p id="acct-prizes" class="text-2xl font-bold">₵0</p></div>
+      <div class="card"><p class="text-sm text-gray-500">Commissions (₵)</p><p id="acct-comm" class="text-2xl font-bold">₵0</p></div>
+      <div class="card"><p class="text-sm text-gray-500">Profit (₵)</p><p id="acct-profit" class="text-2xl font-bold">₵0</p></div>
+    </div>
+    <div class="card">
+      <p class="font-semibold mb-2">Breakdown (this month)</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead><tr><th>Type</th><th>Reference</th><th>Amount (₵)</th><th>Date</th></tr></thead>
+          <tbody id="acct-breakdown"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+/* ... existing Firebase config and helpers remain the same ... */
+const firebaseConfig = {
+  apiKey: "AIzaSyD3FdDFTm2-ic5jRgTgKm8BwKTwvRb0fuw",
+  authDomain: "lotteryhrms.firebaseapp.com",
+  projectId: "lotteryhrms",
+  storageBucket: "lotteryhrms.firebasestorage.app",
+  messagingSenderId: "46749836470",
+  appId: "1:46749836470:web:42d899c220ccfa61713217"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* Helpers */
+const currency = v => `₵${Number(v||0).toLocaleString()}`;
+const safeNum = v => isNaN(Number(v)) ? 0 : Number(v);
+const monthKey = (d) => {
+  const dt = d ? new Date(d) : new Date();
+  const y = dt.getFullYear(); const m = (dt.getMonth()+1).toString().padStart(2,'0');
+  return `${y}-${m}`;
+};
+const monthRange = (ym) => {
+  const [y,m] = ym.split('-').map(Number);
+  const start = new Date(y, m-1, 1, 0,0,0,0);
+  const end = new Date(y, m, 0, 23,59,59,999);
+  return {start, end};
+};
+
+/* RBAC helpers (disabled for testing) */
+let CURRENT_ROLE = 'employee';
+let CURRENT_USER = null;
+let CURRENT_EMPLOYEE_ID = null;
+function applyRBAC() { /* No-op to avoid hiding elements */ }
+
+/* DOM refs */
+const tabs = document.querySelectorAll('.nav-tab');
+const sections = {
+  dashboard: document.getElementById('dashboard-section'),
+  compliance: document.getElementById('compliance-section'),
+  commission: document.getElementById('commission-section'),
+  lotteries: document.getElementById('lotteries-section'),
+  payroll: document.getElementById('payroll-section'),
+  accounting: document.getElementById('accounting-section')
+};
+tabs.forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  const target = t.dataset.target.split('-')[0];
+  Object.values(sections).forEach(s => s.classList.add('hidden'));
+  if (target === 'dashboard') sections.dashboard.classList.remove('hidden');
+  if (target === 'compliance') sections.compliance.classList.remove('hidden');
+  if (target === 'commission') sections.commission.classList.remove('hidden');
+  if (target === 'lotteries') sections.lotteries.classList.remove('hidden');
+  if (target === 'payroll') sections.payroll.classList.remove('hidden');
+  if (target === 'accounting') sections.accounting.classList.remove('hidden');
+}));
+/* Charts */
+const salesCommissionCtx = document.getElementById('salesCommissionChart').getContext('2d');
+const roleCtx = document.getElementById('roleChart').getContext('2d');
+const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+let salesCommissionChart = new Chart(salesCommissionCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Sales', data: [], backgroundColor:'#3b82f6' }, { label: 'Commission', data: [], backgroundColor:'#10b981' }] },
+  options: { responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true}} }
+});
+let roleChart = new Chart(roleCtx, {
+  type: 'doughnut',
+  data: { labels: ['admin','hr','manager','employee','accountant'], datasets: [{ data:[0,0,0,0,0], backgroundColor:['#111827','#6b7280','#2563eb','#10b981','#f59e0b'] }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+});
+let performanceChart = new Chart(performanceCtx, {
+  type: 'bar',
+  data: { labels: [], datasets: [{ label: 'Performance', data: [], backgroundColor: '#ef4444' }] },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+});
+
+/* ... existing Auth UI remains the same ... */
+
+/* Employees (real-time) */
+const employeesTableBody = document.getElementById('employees-table-body');
+let EMP_CACHE = {};
+db.collection('employees').orderBy('name', 'asc').onSnapshot(snapshot => {
+  const employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  EMP_CACHE = {};
+  employees.forEach(e => EMP_CACHE[e.id] = e);
+  console.log('Fetched employees:', employees);
+  renderEmployees(employees);
+  updateDashboardMetricsFromEmployees(employees);
+  updateRoleDistributionChart(employees);
+});
+
+function attachEmployeeEventListeners() {
+  console.log('Attaching event listeners...');
+  
+  // Use event delegation for better performance and reliability
+  employeesTableBody.addEventListener('click', async (e) => {
+    const target = e.target;
+    const id = target.getAttribute('data-id');
+    
+    if (!id) return;
+    
+    if (target.classList.contains('btn-edit')) {
+      console.log('Edit clicked for ID:', id, 'User:', CURRENT_USER?.email || 'none');
+      try {
+        const doc = await db.collection('employees').doc(id).get();
+        if (!doc.exists) {
+          console.log('Employee doc not found:', id);
+          alert('Employee not found');
+          return;
+        }
+        const d = doc.data();
+        console.log('Employee data:', d);
+        const name = prompt('Name', d.name || '');
+        if (name === null) return;
+        const email = prompt('Email', d.email || '');
+        if (email === null) return;
+        const role = prompt('Role (admin/hr/manager/employee/accountant)', d.role || '');
+        if (role === null) return;
+        const branch = prompt('Branch', d.branch || '');
+        if (branch === null) return;
+        const salary = prompt('Salary', d.salary || 0);
+        if (salary === null) return;
+        const commission = prompt('Commission %', d.commission || 0);
+        if (commission === null) return;
+        const targetSales = prompt('Monthly target (₵)', d.targetSales || '');
+        if (targetSales === null) return;
+        const bonusRate = prompt('Bonus % over target', d.bonusRate || '');
+        if (bonusRate === null) return;
+        const performance = prompt('Performance', d.performance || 0);
+        if (performance === null) return;
+        const sales = prompt('Sales', d.sales || 0);
+        if (sales === null) return;
+        await db.collection('employees').doc(id).update({
+          name,
+          email,
+          role,
+          branch: branch || '',
+          salary: safeNum(salary) || 0,
+          commission: safeNum(commission) || 0,
+          targetSales: safeNum(targetSales) || 0,
+          bonusRate: safeNum(bonusRate) || 0,
+          performance: safeNum(performance) || 0,
+          sales: safeNum(sales) || 0
+        });
+        console.log('Employee updated:', id);
+        alert('Employee updated successfully');
+      } catch (e) {
+        console.error('Error updating employee:', id, e);
+        alert('Error updating employee: ' + e.message);
+      }
+    } else if (target.classList.contains('btn-remove')) {
+      console.log('Remove clicked for ID:', id, 'User:', CURRENT_USER?.email || 'none');
+      if (!confirm('Remove employee?')) return;
+      try {
+        await db.collection('employees').doc(id).delete();
+        console.log('Employee deleted:', id);
+        alert('Employee deleted successfully');
+      } catch (e) {
+        console.error('Error deleting employee:', id, e);
+        alert('Error deleting employee: ' + e.message);
+      }
+    }
+  });
+}
+
+function renderEmployees(employees) {
+  console.log('Rendering employees:', employees.length);
+  employeesTableBody.innerHTML = '';
+  const currentMonth = monthKey();
+  const tableRows = employees.map(emp => {
+    if (!emp.id) {
+      console.error('Employee missing ID:', emp);
+      return '';
+    }
+    console.log('Rendering employee ID:', emp.id, 'Name:', emp.name);
+    const salesSum = safeNum(emp.sales) || 0;
+    return `
+      <tr>
+        <td class="py-2">${emp.name || ''}</td>
+        <td>${emp.email || ''}</td>
+        <td>${emp.role || ''}</td>
+        <td>${safeNum(salesSum)}</td>
+        <td>${emp.commission ? emp.commission + '%' : '-'}</td>
+        <td>${emp.targetSales ? currency(emp.targetSales) : '-'}</td>
+        <td>${emp.bonusRate ? emp.bonusRate + '%' : '-'}</td>
+        <td class="py-2">
+          <button data-id="${emp.id}" class="btn-edit text-sm text-gray-600">Edit</button>
+          <button data-id="${emp.id}" class="btn-remove text-sm text-red-600 ml-2">Remove</button>
+        </td>
+      </tr>`;
+  }).join('');
+  employeesTableBody.innerHTML = tableRows;
+  console.log('Table rows rendered:', employeesTableBody.children.length);
+  console.log('Calling attachEmployeeEventListeners after render');
+  attachEmployeeEventListeners();
+}
+
+/* Add employee */
+document.getElementById('btn-add-employee').addEventListener('click', async (ev) => {
+  ev.preventDefault();
+  const name = document.getElementById('emp-name').value.trim();
+  const email = document.getElementById('emp-email').value.trim();
+  const role = document.getElementById('emp-role').value;
+  const salary = safeNum(document.getElementById('emp-salary').value);
+  const commission = safeNum(document.getElementById('emp-commission').value);
+  const branch = document.getElementById('emp-branch').value.trim();
+  const targetSales = safeNum(document.getElementById('emp-target').value);
+  const bonusRate = safeNum(document.getElementById('emp-bonusRate').value);
+  const performance = safeNum(document.getElementById('emp-performance').value);
+  const sales = safeNum(document.getElementById('emp-sales').value);
+  if (!name || !email) return alert('Name and email required');
+  try {
+    await db.collection('employees').add({
+      name, email, role, salary, commission, branch,
+      targetSales: targetSales || 0,
+      bonusRate: bonusRate || 0,
+      performance: performance || 0,
+      sales: sales || 0,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('Employee added:', name, email);
+    document.getElementById('add-employee-form').reset();
+    alert('Employee added successfully');
+  } catch (e) {
+    console.error('Error adding employee:', e);
+    alert('Error adding employee: ' + e.message);
+  }
+});
+
+/* Dashboard helpers */
+const elTotalEmployees = document.getElementById('total-employees');
+const elTotalParticipants = document.getElementById('total-participants');
+const elTotalWinners = document.getElementById('total-winners');
+const elTotalCommissions = document.getElementById('total-commissions');
+const elMetricRevenue = document.getElementById('metric-revenue');
+const elMetricProfit = document.getElementById('metric-profit');
+
+// Commission tracking
+let COMMISSION_CACHE = {};
+db.collection('commissions').orderBy('date', 'desc').limit(10).onSnapshot(snapshot => {
+  const commissions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  COMMISSION_CACHE = {};
+  commissions.forEach(c => COMMISSION_CACHE[c.id] = c);
+  renderCommissions(commissions);
+  updateDashboardCommissions(commissions);
+});
+
+function renderCommissions(commissions) {
+  const commissionsBody = document.getElementById('commissions-body');
+  commissionsBody.innerHTML = commissions.map(com => `
+    <tr>
+      <td class="py-1">${com.employeeName || 'Unknown'}</td>
+      <td>${currency(com.amount || 0)}</td>
+      <td>${com.source || 'Sales'}</td>
+    </tr>
+  `).join('');
+}
+
+function updateDashboardCommissions(commissions) {
+  const totalCommissions = commissions.reduce((sum, com) => sum + safeNum(com.amount), 0);
+  elTotalCommissions.textContent = currency(totalCommissions);
+}
+
+async function updateDashboardMetricsFromEmployees(employees) {
+  // Update employee count
+  elTotalEmployees.textContent = employees.length;
+  
+  // Update charts
+  const labels = employees.map(e => e.name || e.email || e.id).slice(0, 12);
+  const salesArr = employees.slice(0, 12).map(e => safeNum(e.sales) || 0);
+  const commissions = salesArr.map((s, i) => Math.round(s * safeNum(employees[i].commission || 0) / 100));
+  const performances = employees.slice(0, 12).map(e => safeNum(e.performance) || 0);
+  
+  // Update sales/commission chart
+  salesCommissionChart.data.labels = labels;
+  salesCommissionChart.data.datasets[0].data = salesArr;
+  salesCommissionChart.data.datasets[1].data = commissions;
+  salesCommissionChart.update();
+  
+  // Update performance chart
+  performanceChart.data.labels = labels;
+  performanceChart.data.datasets[0].data = performances;
+  performanceChart.update();
+  
+  // Calculate and update revenue and profit (simplified)
+  const totalSales = employees.reduce((sum, emp) => sum + safeNum(emp.sales), 0);
+  const totalCommissions = employees.reduce((sum, emp) => {
+    const commissionRate = safeNum(emp.commission) || 0;
+    return sum + (safeNum(emp.sales) * commissionRate / 100);
+  }, 0);
+  
+  // Simple revenue calculation (sales minus 30% for costs)
+  const revenue = totalSales * 0.7;
+  const profit = revenue - totalCommissions;
+  
+  elMetricRevenue.textContent = currency(revenue);
+  elMetricProfit.textContent = currency(profit);
+}
+
+function updateRoleDistributionChart(employees) {
+  const roleCounts = {
+    admin: 0,
+    hr: 0,
+    manager: 0,
+    employee: 0,
+    accountant: 0
+  };
+  
+  employees.forEach(emp => {
+    if (roleCounts.hasOwnProperty(emp.role)) {
+      roleCounts[emp.role]++;
+    } else {
+      roleCounts.employee++; // Default to employee for unknown roles
+    }
+  });
+  
+  roleChart.data.datasets[0].data = [
+    roleCounts.admin,
+    roleCounts.hr,
+    roleCounts.manager,
+    roleCounts.employee,
+    roleCounts.accountant
+  ];
+  roleChart.update();
+}
+
+// Initialize the dashboard
+function initDashboard() {
+  // Load initial employee data
+  db.collection('employees').get().then(snapshot => {
+    const employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    EMP_CACHE = {};
+    employees.forEach(e => EMP_CACHE[e.id] = e);
+    renderEmployees(employees);
+    updateDashboardMetricsFromEmployees(employees);
+    updateRoleDistributionChart(employees);
+  });
+  
+  // Load initial commission data
+  db.collection('commissions').orderBy('date', 'desc').limit(10).get().then(snapshot => {
+    const commissions = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    COMMISSION_CACHE = {};
+    commissions.forEach(c => COMMISSION_CACHE[c.id] = c);
+    renderCommissions(commissions);
+    updateDashboardCommissions(commissions);
+  });
+}
+
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, initializing app...');
+  initDashboard();
+  attachEmployeeEventListeners();
+});
+
+// Payouts functionality
+const payoutsBody = document.getElementById('payouts-body');
+db.collection('payouts').orderBy('date', 'desc').limit(5).onSnapshot(snapshot => {
+  const payouts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderPayouts(payouts);
+});
+
+function renderPayouts(payouts) {
+  payoutsBody.innerHTML = payouts.map(payout => `
+    <tr>
+      <td class="py-1">${payout.employeeName || 'Unknown'}</td>
+      <td>${currency(payout.amount || 0)}</td>
+      <td><span class="status-badge ${getStatusClass(payout.status)}">${payout.status || 'Pending'}</span></td>
+      <td>
+        ${payout.status === 'Pending' ? 
+          `<button class="text-sm text-green-600" onclick="markPayoutPaid('${payout.id}')">Mark Paid</button>` : 
+          'Completed'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function getStatusClass(status) {
+  switch(status) {
+    case 'Paid': return 'status-complete';
+    case 'Pending': return 'status-mid';
+    case 'Failed': return 'status-bad';
+    default: return 'status-mid';
+  }
+}
+
+async function markPayoutPaid(payoutId) {
+  try {
+    await db.collection('payouts').doc(payoutId).update({
+      status: 'Paid',
+      paidDate: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating payout:', error);
+    alert('Error updating payout: ' + error.message);
+  }
+}
+
+// Add sample commission data for testing
+async function addSampleCommission(employeeId, amount, source = 'Sales') {
+  const employee = EMP_CACHE[employeeId];
+  if (!employee) return;
+  
+  try {
+    await db.collection('commissions').add({
+      employeeId,
+      employeeName: employee.name,
+      amount: safeNum(amount),
+      source,
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error adding commission:', error);
+  }
+}
+
+// Add sample payout for testing
+async function addSamplePayout(employeeId, amount) {
+  const employee = EMP_CACHE[employeeId];
+  if (!employee) return;
+  
+  try {
+    await db.collection('payouts').add({
+      employeeId,
+      employeeName: employee.name,
+      amount: safeNum(amount),
+      status: 'Pending',
+      date: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error adding payout:', error);
+  }
+}
+
+// For testing - add sample data buttons (remove in production)
+document.addEventListener('DOMContentLoaded', function() {
+  // Add test buttons for demo purposes
+  const testDiv = document.createElement('div');
+  testDiv.innerHTML = `
+    <div style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+      <p style="margin: 0 0 5px 0; font-weight: bold;">Test Data</p>
+      <button id="add-test-commission" style="margin-right: 5px; padding: 5px;">Add Commission</button>
+      <button id="add-test-payout" style="padding: 5px;">Add Payout</button>
+    </div>
+  `;
+  document.body.appendChild(testDiv);
+  
+  document.getElementById('add-test-commission').addEventListener('click', async () => {
+    const employees = Object.values(EMP_CACHE);
+    if (employees.length > 0) {
+      const randomEmp = employees[Math.floor(Math.random() * employees.length)];
+      const amount = Math.floor(Math.random() * 1000) + 100;
+      await addSampleCommission(randomEmp.id, amount);
+      alert(`Added ${currency(amount)} commission for ${randomEmp.name}`);
+    }
+  });
+  
+  document.getElementById('add-test-payout').addEventListener('click', async () => {
+    const employees = Object.values(EMP_CACHE);
+    if (employees.length > 0) {
+      const randomEmp = employees[Math.floor(Math.random() * employees.length)];
+      const amount = Math.floor(Math.random() * 2000) + 500;
+      await addSamplePayout(randomEmp.id, amount);
+      alert(`Added ${currency(amount)} payout for ${randomEmp.name}`);
+    }
+  });
+});
+
+</script>
+</body>
+</html>
