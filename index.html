@@ -655,6 +655,7 @@ function renderEmployees(employees) {
 document.getElementById('btn-add-employee').addEventListener('click', async (ev) => {
   if (CURRENT_ROLE !== 'admin' && CURRENT_ROLE !== 'hr') return;
   ev.preventDefault();
+
   const name = document.getElementById('emp-name').value.trim();
   const email = document.getElementById('emp-email').value.trim();
   const role = document.getElementById('emp-role').value;
@@ -665,12 +666,14 @@ document.getElementById('btn-add-employee').addEventListener('click', async (ev)
   const bonusRate = safeNum(document.getElementById('emp-bonusRate').value);
   const performance = safeNum(document.getElementById('emp-performance').value);
   const sales = safeNum(document.getElementById('emp-sales').value);
-  
+
   if (!name || !email) return alert('Name and email required');
-  
+
   try {
     setLoadingState('btn-add-employee', true);
-    await db.collection('employees').add({
+
+    // 1️⃣ Add employee record
+    const empRef = await db.collection('employees').add({
       name, email, role, salary, commission, branch,
       targetSales: targetSales || 0,
       bonusRate: bonusRate || 0,
@@ -678,8 +681,25 @@ document.getElementById('btn-add-employee').addEventListener('click', async (ev)
       sales: sales || 0,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
+    // 2️⃣ Sync role into `users` collection
+    const existing = await db.collection('users').where('email', '==', email).get();
+    if (!existing.empty) {
+      // Update role if user doc already exists
+      existing.forEach(async (doc) => {
+        await db.collection('users').doc(doc.id).set({
+          name, email, role
+        }, { merge: true });
+      });
+    } else {
+      // Otherwise create a new user doc (fallback: use employee doc id)
+      await db.collection('users').doc(empRef.id).set({
+        name, email, role
+      });
+    }
+
     document.getElementById('add-employee-form').reset();
-    alert('Employee added successfully');
+    alert('Employee added successfully (role synced)');
   } catch (e) {
     handleError('add employee', e, 'Error adding employee');
   } finally {

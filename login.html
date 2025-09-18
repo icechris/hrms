@@ -110,30 +110,43 @@
     showForm('loginForm');
 
     // Signup Handler
-    signupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('signupEmail').value.trim();
-      const password = document.getElementById('signupPassword').value;
+   // Signup Handler
+signupForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
 
-      try {
-        setLoading(signupBtn, true); signupError.style.display = "none";
+  try {
+    setLoading(signupBtn, true); signupError.style.display = "none";
 
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection("users").doc(userCredential.user.uid).set({
-          email,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          role: "employee"
-        });
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
 
-        alert("Account created successfully. Please login.");
-        showForm('loginForm'); // switch to login
-      } catch (error) {
-        signupError.textContent = error.message;
-        signupError.style.display = "block";
-      } finally {
-        setLoading(signupBtn, false);
-      }
+    // 🔎 Look for employee record first
+    let role = "employee";
+    let name = "";
+    const empSnap = await db.collection("employees").where("email", "==", email).limit(1).get();
+    if (!empSnap.empty) {
+      const empData = empSnap.docs[0].data();
+      role = empData.role || "employee";
+      name = empData.name || "";
+    }
+
+    await db.collection("users").doc(userCredential.user.uid).set({
+      email,
+      name,
+      role,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+
+    alert("Account created successfully. Please login.");
+    showForm("loginForm"); // switch to login
+  } catch (error) {
+    signupError.textContent = error.message;
+    signupError.style.display = "block";
+  } finally {
+    setLoading(signupBtn, false);
+  }
+});
 
     // Login Handler
     loginForm.addEventListener('submit', async (e) => {
